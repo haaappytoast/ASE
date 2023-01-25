@@ -48,6 +48,7 @@ class HumanoidAMP(Humanoid):
         Hybrid = 3
 
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
+
         state_init = cfg["env"]["stateInit"]
         self._state_init = HumanoidAMP.StateInit[state_init]
         self._hybrid_init_prob = cfg["env"]["hybridInitProb"]
@@ -87,6 +88,7 @@ class HumanoidAMP(Humanoid):
         return
 
     def get_num_amp_obs(self):
+        #! 10 * 125
         return self._num_amp_obs_steps * self._num_amp_obs_per_step
 
     def fetch_amp_obs_demo(self, num_samples):
@@ -196,7 +198,6 @@ class HumanoidAMP(Humanoid):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
-
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
 
