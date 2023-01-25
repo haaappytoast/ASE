@@ -87,31 +87,33 @@ class DeepmmAgent(common_agent.CommonAgent):
         
         return
 
-    def play_steps(self):
+    #! experience해주는 코드
+    def play_steps(self):     #! ['actions', 'neglogpacs', 'values']
         self.set_eval()
 
         epinfos = []
         done_indices = []
         update_list = self.update_list
-
         for n in range(self.horizon_length):
 
             self.obs = self.env_reset(done_indices)
-            self.experience_buffer.update_data('obses', n, self.obs['obs'])
+            self.experience_buffer.update_data('obses', n, self.obs['obs']) #! size: [1,223]
 
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
                 res_dict = self.get_masked_action_values(self.obs, masks)
             else:
-                res_dict = self.get_action_values(self.obs, self._rand_action_probs)
+                #! res_dict.keys() = ['neglogpacs', 'values', 'actions', 'rnn_states', 'mus', 'sigmas', 'rand_action_mask']
+                res_dict = self.get_action_values(self.obs, self._rand_action_probs) #! go to deepmm_agent.py
 
             for k in update_list:
-                self.experience_buffer.update_data(k, n, res_dict[k]) 
+                self.experience_buffer.update_data(k, n, res_dict[k])   #! experience buffer에 넣어준다!
 
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
 
-            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])
+            #! 여기서 model에서 explore한 actions으로 obs, reward, dones, infos 가져오기
+            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])   #! reward <- humanoid.py의 _compute_reward()
             shaped_rewards = self.rewards_shaper(rewards)
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
             self.experience_buffer.update_data('next_obses', n, self.obs['obs'])
@@ -166,9 +168,10 @@ class DeepmmAgent(common_agent.CommonAgent):
         return batch_dict
     
     def get_action_values(self, obs_dict, rand_action_probs):
-        processed_obs = self._preproc_obs(obs_dict['obs'])
+        processed_obs = self._preproc_obs(obs_dict['obs'])  #! normalize하거나 float로 바꿔주거나 등등 preprocess 
 
-        self.model.eval()
+        #! eval mode 
+        self.model.eval()   #! ModelDeepmmContinuous."Network"(net)
         input_dict = {
             'is_train': False,
             'prev_actions': None, 
@@ -177,19 +180,20 @@ class DeepmmAgent(common_agent.CommonAgent):
         }
 
         with torch.no_grad():
-            res_dict = self.model(input_dict)
-            if self.has_central_value:
+            res_dict = self.model(input_dict)   #! ModelDeepmmContinuous.Network(net).forward()인 것!
+            #! here: false
+            if self.has_central_value:          
                 states = obs_dict['states']
                 input_dict = {
                     'is_train': False,
                     'states' : states,
                 }
-                value = self.get_central_value(input_dict)
+                value = self.get_central_value(input_dict)  #! go to a2c_common.get_central_value()
                 res_dict['values'] = value
 
         if self.normalize_value:
-            res_dict['values'] = self.value_mean_std(res_dict['values'], True)
-        
+            res_dict['values'] = self.value_mean_std(res_dict['values'], True)  #! normalize value
+
         rand_action_mask = torch.bernoulli(rand_action_probs)
         det_action_mask = rand_action_mask == 0.0
         res_dict['actions'][det_action_mask] = res_dict['mus'][det_action_mask]
@@ -214,27 +218,34 @@ class DeepmmAgent(common_agent.CommonAgent):
             if self.is_rnn:
                 batch_dict = self.play_steps_rnn()
             else:
+                #! 여기서 experience 데이터 만들어줌 (horizon_length동안 정책 실행하여 샘플 생성)
                 batch_dict = self.play_steps() 
 
         play_time_end = time.time()
         update_time_start = time.time()
         rnn_masks = batch_dict.get('rnn_masks', None)
         
+        #! 요건 discriminator를 위해!
         self._update_amp_demos()
         num_obs_samples = batch_dict['amp_obs'].shape[0]
+        #! (num_samples, self._num_amp_obs_steps, self._num_amp_obs_per_step)
+        #!humanoid_deepmm.py line 101: fetch_amp_obs_demo에서 만든 거
         amp_obs_demo = self._amp_obs_demo_buffer.sample(num_obs_samples)['amp_obs']
         batch_dict['amp_obs_demo'] = amp_obs_demo
 
+        #? 아직 amp_replay_buffer가 뭔지는 잘 모르겠음.
         if (self._amp_replay_buffer.get_total_count() == 0):
             batch_dict['amp_obs_replay'] = batch_dict['amp_obs']
         else:
             batch_dict['amp_obs_replay'] = self._amp_replay_buffer.sample(num_obs_samples)['amp_obs']
 
-        self.set_train()
+        self.set_train()    #! a2c_network train시킴. -> actor, critic, disc_mlp 모두!
 
         self.curr_frames = batch_dict.pop('played_frames')
+        #! common_agent.py에서는 self.dataset에 obs 등등 다 저장해주고, 
+        #! deepmm_agent는 self.dataset.values_dict['amp_obs'] ['amp_obs_demo'] ['amp_obs_replay']에 저장해줌.
         self.prepare_dataset(batch_dict)
-        self.algo_observer.after_steps()
+        self.algo_observer.after_steps()    #! not implemented -> for what?
 
         if self.has_central_value:
             self.train_central_value()
@@ -244,12 +255,15 @@ class DeepmmAgent(common_agent.CommonAgent):
         if self.is_rnn:
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
-
+        #! ase/data/train/rlg/ config.mini_epochs -> 6번 정책 업데이트 함.
         for _ in range(0, self.mini_epochs_num):
             ep_kls = []
-            for i in range(len(self.dataset)):
+            for i in range(len(self.dataset)):  #! dataset은 4개밖에 없네ㅠㅠ -> batch_size인가보다
+                #! in a2c_continuous.py -> calc_gradients() in this code
+                #! a_info, c_info, disc_info update 시켜줌. -> loss 등등
                 curr_train_info = self.train_actor_critic(self.dataset[i])
                 
+                #! didn't define it -> this one!
                 if self.schedule_type == 'legacy':  
                     if self.multi_gpu:
                         curr_train_info['kl'] = self.hvd.average_value(curr_train_info['kl'], 'ep_kls')
@@ -288,8 +302,8 @@ class DeepmmAgent(common_agent.CommonAgent):
         train_info['play_time'] = play_time
         train_info['update_time'] = update_time
         train_info['total_time'] = total_time
-        self._record_train_batch_info(batch_dict, train_info)
 
+        self._record_train_batch_info(batch_dict, train_info)
         return train_info
 
     def calc_gradients(self, input_dict):
@@ -338,7 +352,8 @@ class DeepmmAgent(common_agent.CommonAgent):
             batch_dict['seq_length'] = self.seq_len
 
         with torch.cuda.amp.autocast(enabled=self.mixed_precision):
-            res_dict = self.model(batch_dict)
+            #! train STARTS here!!! -> 첫번째
+            res_dict = self.model(batch_dict)   #! -> 1. go to deepmm_models.py -> Network
             action_log_probs = res_dict['prev_neglogp']
             values = res_dict['values']
             entropy = res_dict['entropy']
@@ -382,6 +397,7 @@ class DeepmmAgent(common_agent.CommonAgent):
 
         self.scaler.scale(loss).backward()
         #TODO: Refactor this ugliest code of the year
+        #! here: False
         if self.truncate_grads:
             if self.multi_gpu:
                 self.optimizer.synchronize()
@@ -526,6 +542,7 @@ class DeepmmAgent(common_agent.CommonAgent):
         return agent_acc, demo_acc
 
     def _fetch_amp_obs_demo(self, num_samples):
+        #! self.vec_env = __main__.RLGPUEnv
         #! self.vec_env.env : Humanoid_deepmm / num_samples = self._amp_batch_size
         amp_obs_demo = self.vec_env.env.fetch_amp_obs_demo(num_samples)
         return amp_obs_demo
@@ -549,11 +566,12 @@ class DeepmmAgent(common_agent.CommonAgent):
         return
 
     def _init_amp_demo_buf(self):
-        buffer_size = self._amp_obs_demo_buffer.get_buffer_size()
+        buffer_size = self._amp_obs_demo_buffer.get_buffer_size()   # self.config['amp_obs_demo_buffer_size']
         num_batches = int(np.ceil(buffer_size / self._amp_batch_size))
 
         for i in range(num_batches):
             curr_samples = self._fetch_amp_obs_demo(self._amp_batch_size)
+            #! buf size: torch.Size([4, 10, 125) (num_samples, self._num_amp_obs_steps, self._num_amp_obs_per_step)]
             self._amp_obs_demo_buffer.store({'amp_obs': curr_samples})
 
         return

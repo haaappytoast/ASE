@@ -53,31 +53,33 @@ class DeepmmBuilder(network_builder.A2CBuilder):
                     sigma_init(self.sigma)
                     
             amp_input_shape = kwargs.get('amp_input_shape')
+            #! discriminator network 쌓는 code
             self._build_disc(amp_input_shape)
 
             return
 
+        #! params == yaml['params']['network']안에 있는 정보들
         def load(self, params):
             super().load(params)
-
+            ##!! should change later
             self._disc_units = params['disc']['units']
             self._disc_activation = params['disc']['activation']
             self._disc_initializer = params['disc']['initializer']
             return
 
         def forward(self, obs_dict):
+            #! ModelDeepmmContinuous의 Network의 super().forward() 타고 들어옴.
             obs = obs_dict['obs']
             states = obs_dict.get('rnn_states', None)
-
-            actor_outputs = self.eval_actor(obs)
-            value = self.eval_critic(obs)
-
-            output = actor_outputs + (value, states)
-
+            #! train actor function
+            actor_outputs = self.eval_actor(obs)    #! mu, sigma -> 각각 actor_outputs[0],[1] -> torch.Size([1, 28]
+            #! train value function
+            value = self.eval_critic(obs)           #! value.size = [1, 1]
+            output = actor_outputs + (value, states)    #! states none
             return output
 
         def eval_actor(self, obs):
-            a_out = self.actor_cnn(obs)
+            a_out = self.actor_cnn(obs) #! obs shape: [1, 223]
             a_out = a_out.contiguous().view(a_out.size(0), -1)
             a_out = self.actor_mlp(a_out)
                      
@@ -103,7 +105,7 @@ class DeepmmBuilder(network_builder.A2CBuilder):
             c_out = self.critic_cnn(obs)
             c_out = c_out.contiguous().view(c_out.size(0), -1)
             c_out = self.critic_mlp(c_out)              
-            value = self.value_act(self.value(c_out))
+            value = self.value_act(self.value(c_out))   #! value activation -> defined in network_builder.py
             return value
 
         def eval_disc(self, amp_obs):

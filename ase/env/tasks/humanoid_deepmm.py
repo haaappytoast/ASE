@@ -52,13 +52,15 @@ class HumanoidDeepmm(Humanoid):
         #! from ase/data/cfg
         self._state_init = HumanoidDeepmm.StateInit[state_init]
         self._hybrid_init_prob = cfg["env"]["hybridInitProb"]
-        #! 무엇을 뜻하는지 아직 잘 모르겠음.
+        #! 무엇을 뜻하는지 아직 잘 모르겠음. -> history 만들어주는 느낌
         self._num_amp_obs_steps = cfg["env"]["numAMPObsSteps"]
         assert(self._num_amp_obs_steps >= 2)
 
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
 
+        self._usePhase = True
+        
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
                          physics_engine=physics_engine,
@@ -66,12 +68,13 @@ class HumanoidDeepmm(Humanoid):
                          device_id=device_id,
                          headless=headless)
 
+        ##! added phase
+        if(self._usePhase):
+            self._phase = torch.zeros((self.num_envs), device=self.device, dtype=torch.float)
+
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
 
-        ##! added phase
-        self._phase = None
-        
         #! shape: torch.Size([1, 10, 125]
         self._amp_obs_buf = torch.zeros((self.num_envs, self._num_amp_obs_steps, self._num_amp_obs_per_step), device=self.device, dtype=torch.float)
         self._curr_amp_obs_buf = self._amp_obs_buf[:, 0]    #! shape: (1, 125)
@@ -81,8 +84,8 @@ class HumanoidDeepmm(Humanoid):
         return
 
     def post_physics_step(self):
+        #! humanoid.py > obs = compute_humanoid_observations_max
         super().post_physics_step()
-        
         self._update_hist_amp_obs()
         self._compute_amp_observations()
 
@@ -94,10 +97,11 @@ class HumanoidDeepmm(Humanoid):
     def get_num_amp_obs(self):
         return self._num_amp_obs_steps * self._num_amp_obs_per_step
 
-    #! used in vec_task_wrapper.py > fetch_amp_obs_demo
+    #! used in vec_task_wrapper.py > fetch_amp_obs_demo > agent.py의 train_epoch에서 쓰임
     def fetch_amp_obs_demo(self, num_samples):
         #! num_samples: ase/data/cfg/train/rlg 안의 amp_batch_size 임.
         if (self._amp_obs_demo_buf is None):
+             #! buf size: torch.Size([4, 10, 125)]
             self._build_amp_obs_demo_buf(num_samples)
         else:
             assert(self._amp_obs_demo_buf.shape[0] == num_samples)
@@ -111,8 +115,8 @@ class HumanoidDeepmm(Humanoid):
         motion_times0 += truncate_time
         amp_obs_demo = self.build_amp_obs_demo(motion_ids, motion_times0)
         self._amp_obs_demo_buf[:] = amp_obs_demo.view(self._amp_obs_demo_buf.shape)
+        #! shape: [amp_batch_size, self._num_amp_obs_steps * self._num_amp_obs_per_step]
         amp_obs_demo_flat = self._amp_obs_demo_buf.view(-1, self.get_num_amp_obs())
-
         return amp_obs_demo_flat
 
     def build_amp_obs_demo(self, motion_ids, motion_times0):
@@ -130,15 +134,29 @@ class HumanoidDeepmm(Humanoid):
 
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                 = self._motion_lib.get_motion_state(motion_ids, motion_times)
-        amp_obs_demo = build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel,
+        
+        #! ref state에 대한 observation
+        amp_obs_demo = build_deepmm_observations(root_pos, root_rot, root_vel, root_ang_vel,
                                                 dof_pos, dof_vel, key_pos,
                                                 self._local_root_obs, self._root_height_obs,
                                                 self._dof_obs_size, self._dof_offsets)
+        #!! should implement phase
+        if(self._usePhase):
+            # expand amp_obs_demo
+            pass
+
         return amp_obs_demo
 
     def _build_amp_obs_demo_buf(self, num_samples):
-        #! torch.Size([4, 10, 125])
+        #! torch.Size([4, 10, 125)
         self._amp_obs_demo_buf = torch.zeros((num_samples, self._num_amp_obs_steps, self._num_amp_obs_per_step), device=self.device, dtype=torch.float32)
+        
+        #!! phase: should implement
+        if(self._usePhase):
+            #! make sure that it uses phase variable
+            # assert()
+            pass
+
         return
         
     def _setup_character_props(self, key_bodies):
@@ -148,10 +166,20 @@ class HumanoidDeepmm(Humanoid):
         num_key_bodies = len(key_bodies)
 
         if (asset_file == "mjcf/amp_humanoid.xml"):
-            #? why is it 125?
+            #! why is it 125 -> num_amp_obs 
             self._num_amp_obs_per_step = 13 + self._dof_obs_size + 28 + 3 * num_key_bodies # [root_h(1), root_rot(6), root_vel(3), root_ang_vel(3), dof_pos(6 * 12), dof_vel (28) , key_body_pos(3 * 4)]
+            
+            #! add phase info in amp_obs
+            if(self._usePhase):
+                pass
+
         elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
             self._num_amp_obs_per_step = 13 + self._dof_obs_size + 31 + 3 * num_key_bodies # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+            
+            #! add phase info in amp_obs
+            if(self._usePhase):
+                pass
+            
         else:
             print("Unsupported character config file: {s}".format(asset_file))
             assert(False)
@@ -176,6 +204,7 @@ class HumanoidDeepmm(Humanoid):
 
         return
 
+    #! state 다시 initialize 해주는 코드!
     def _reset_actors(self, env_ids):
         #!!  should be always changed (HumanoidAmp -> HumanoidDeepmm)
         if (self._state_init == HumanoidDeepmm.StateInit.Default):
@@ -208,12 +237,11 @@ class HumanoidDeepmm(Humanoid):
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
         
-        #!! added phase / shape: 40 [num_samples * amp_obs_steps]
-        phase = self._motion_lib._calc_phase(motion_ids, motion_times)
-
+        # root_pos.shape:  torch.Size([1, 3], [1, 4], [1, 28], [1, 3], [1, 4, 3] )
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
-               = self._motion_lib.get_motion_state(motion_ids, motion_times)
+               = self._motion_lib.get_motion_state(motion_ids, motion_times) 
 
+        #! env_state를 motion_times에 맞게 세팅해줌. (self._humanoid_root_states, _dof_pos, _dof_vel)
         self._set_env_state(env_ids=env_ids, 
                             root_pos=root_pos, 
                             root_rot=root_rot, 
@@ -225,6 +253,16 @@ class HumanoidDeepmm(Humanoid):
         self._reset_ref_env_ids = env_ids
         self._reset_ref_motion_ids = motion_ids
         self._reset_ref_motion_times = motion_times
+        
+        #!! added phase / shape: 40 [num_samples * amp_obs_steps]
+        phase = self._motion_lib._calc_phase(motion_ids, motion_times)
+
+        if (self._usePhase):
+            if env_ids == None:
+                self._phase = phase
+            else:
+                self._phase[env_ids] = phase #!! reset phase
+
         return
 
     def _reset_hybrid_state_init(self, env_ids):
@@ -243,15 +281,16 @@ class HumanoidDeepmm(Humanoid):
         return
 
     def _init_amp_obs(self, env_ids):
+        #! 여기서 지금 현재 amp_observation 계산하고
         self._compute_amp_observations(env_ids)
 
+        #! reference onb initialize 해주기
         if (len(self._reset_default_env_ids) > 0):
             self._init_amp_obs_default(self._reset_default_env_ids)
 
         if (len(self._reset_ref_env_ids) > 0):
             self._init_amp_obs_ref(self._reset_ref_env_ids, self._reset_ref_motion_ids,
                                    self._reset_ref_motion_times)
-        
         return
 
     def _init_amp_obs_default(self, env_ids):
@@ -274,10 +313,15 @@ class HumanoidDeepmm(Humanoid):
 
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
-        amp_obs_demo = build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel, 
+        amp_obs_demo = build_deepmm_observations(root_pos, root_rot, root_vel, root_ang_vel, 
                                               dof_pos, dof_vel, key_pos, 
                                               self._local_root_obs, self._root_height_obs, 
                                               self._dof_obs_size, self._dof_offsets)
+        #! add phase info in amp_obs
+        if(self._usePhase):
+            # add phase info in amp_obs_demo
+            pass
+        
         self._hist_amp_obs_buf[env_ids] = amp_obs_demo.view(self._hist_amp_obs_buf[env_ids].shape)
         return
     
@@ -289,6 +333,7 @@ class HumanoidDeepmm(Humanoid):
         
         self._dof_pos[env_ids] = dof_pos
         self._dof_vel[env_ids] = dof_vel
+        
         return
 
     def _update_hist_amp_obs(self, env_ids=None):
@@ -298,25 +343,35 @@ class HumanoidDeepmm(Humanoid):
             self._hist_amp_obs_buf[env_ids] = self._amp_obs_buf[env_ids, 0:(self._num_amp_obs_steps - 1)].clone()
         return
     
+    #! 여기서 부터 시작!! -> 여기에 어떻게 phase 넣어줄 것인지 볼것!!
     def _compute_amp_observations(self, env_ids=None):
         key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
         if (env_ids is None):
             #! look at humanoid.py for _rigid_body_*
-            self._curr_amp_obs_buf[:] = build_amp_observations(self._rigid_body_pos[:, 0, :],
+            #? how can I added phase variable here ?
+            #? 여기는 진짜 rigid_body에 대한 observation!
+            self._curr_amp_obs_buf[:] = build_deepmm_observations(self._rigid_body_pos[:, 0, :],
                                                                self._rigid_body_rot[:, 0, :],
                                                                self._rigid_body_vel[:, 0, :],
                                                                self._rigid_body_ang_vel[:, 0, :],
                                                                self._dof_pos, self._dof_vel, key_body_pos,
                                                                self._local_root_obs, self._root_height_obs, 
                                                                self._dof_obs_size, self._dof_offsets)
+            #! add phase info in amp_obs
+            if(self._usePhase):
+                pass
         else:
-            self._curr_amp_obs_buf[env_ids] = build_amp_observations(self._rigid_body_pos[env_ids][:, 0, :],
+            #? how can I added phase variable here ?
+            self._curr_amp_obs_buf[env_ids] = build_deepmm_observations(self._rigid_body_pos[env_ids][:, 0, :],
                                                                    self._rigid_body_rot[env_ids][:, 0, :],
                                                                    self._rigid_body_vel[env_ids][:, 0, :],
                                                                    self._rigid_body_ang_vel[env_ids][:, 0, :],
                                                                    self._dof_pos[env_ids], self._dof_vel[env_ids], key_body_pos[env_ids],
                                                                    self._local_root_obs, self._root_height_obs, 
                                                                    self._dof_obs_size, self._dof_offsets)
+            #! add phase info in amp_obs
+            if(self._usePhase):
+                pass
         return
 
 
@@ -365,6 +420,7 @@ def build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel, dof_pos, 
 
     return obs
 
+#!! phase added
 def build_deepmm_observations(root_pos, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos, 
                            local_root_obs, root_height_obs, dof_obs_size, dof_offsets):
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, int, List[int]) -> Tensor
