@@ -1,12 +1,17 @@
+# runner.load()의 self.default_config
 params:
   seed: -1
 
+# self.algo_params
   algo:
     name: deepmm
-
+    
+# self.model_name
   model:
     name: deepmm
 
+  # Model_builder의 self.network_name
+  # DeepmmBuilder.Network.load()의 params
   network:
     name: deepmm
     separate: True
@@ -40,9 +45,13 @@ params:
       initializer:
         name: default
 
+# self.load_check_point
   load_checkpoint: False
 
+# runner의 self.config
+# agent의 config
   config:
+  # CommenAgent의 init함수에서, net_config = 'actions_num', 'input_shape', 'num_seqs' 'value_size' 지정해줌
     name: Humanoid
     env_name: rlgpu
     multi_gpu: False
