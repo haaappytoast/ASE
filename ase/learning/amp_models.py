@@ -31,6 +31,7 @@ from rl_games.algos_torch.models import ModelA2CContinuousLogStd
 
 class ModelAMPContinuous(ModelA2CContinuousLogStd):
     def __init__(self, network):
+        # network = learning.amp_network_builder.AMPBuilder
         super().__init__(network)
         return
 

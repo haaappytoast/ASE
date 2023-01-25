@@ -165,7 +165,7 @@ class AMPAgent(common_agent.CommonAgent):
         return batch_dict
     
     def get_action_values(self, obs_dict, rand_action_probs):
-        processed_obs = self._preproc_obs(obs_dict['obs'])
+        processed_obs = self._preproc_obs(obs_dict['obs'])  #! normalize하거나 float로 바꿔주거나 등등 preprocess 
 
         self.model.eval()
         input_dict = {
@@ -247,6 +247,7 @@ class AMPAgent(common_agent.CommonAgent):
         for _ in range(0, self.mini_epochs_num):
             ep_kls = []
             for i in range(len(self.dataset)):
+                #! training step!
                 curr_train_info = self.train_actor_critic(self.dataset[i])
                 
                 if self.schedule_type == 'legacy':  
@@ -347,6 +348,7 @@ class AMPAgent(common_agent.CommonAgent):
             disc_agent_replay_logit = res_dict['disc_agent_replay_logit']
             disc_demo_logit = res_dict['disc_demo_logit']
 
+            #! actor training
             a_info = self._actor_loss(old_action_log_probs_batch, action_log_probs, advantage, curr_e_clip)
             a_loss = a_info['actor_loss']
             a_clipped = a_info['actor_clipped'].float()

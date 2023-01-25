@@ -51,6 +51,7 @@ import learning.amp_datasets as amp_datasets
 from tensorboardX import SummaryWriter
 
 class CommonAgent(a2c_continuous.A2CAgent):
+    #! config == cfg/train/rlg 안의 ['config']
     def __init__(self, base_name, config):
         a2c_common.A2CBase.__init__(self, base_name, config)
 
@@ -63,6 +64,11 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self._save_intermediate = config.get('save_intermediate', False)
 
         net_config = self._build_net_config()
+
+        #! self.network = -> learning.amp_models.ModelAMPContinuous (a2c_common.py 에서 지정해줌)
+        #! 여기선 self.model = -> 이 network는 ModelDeepmmContinuous.Network(net) initialize해주는 것인데
+        #! 그 안에 ModelDeepmmContinuous의 net를 빌드해주는 건 DeepmmBuilder.Network(self.params, **kwargs)
+        # net_config = 'actions_num', 'input_shape', 'num_seqs' 'value_size' 지정해줌
         self.model = self.network.build(net_config)
         self.model.to(self.ppo_device)
         self.states = None
@@ -114,6 +120,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         total_time = 0
         rep_count = 0
         self.frame = 0
+        #! go to RLGPUEnv and get full_state['obs']
         self.obs = self.env_reset()
         self.curr_frames = self.batch_size_envs
         
@@ -122,11 +129,12 @@ class CommonAgent(a2c_continuous.A2CAgent):
         if self.multi_gpu:
             self.hvd.setup_algo(self)
 
+        #! go to deepmm_agent._init_train() -> _init_amp_demo_buf(self)
         self._init_train()
 
         while True:
             epoch_num = self.update_epoch()
-            train_info = self.train_epoch()
+            train_info = self.train_epoch() #! go to deepmm_agent
 
             sum_time = train_info['total_time']
             total_time += sum_time
@@ -149,7 +157,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
                 self.writer.add_scalar('info/epochs', epoch_num, frame)
                 self._log_train_info(train_info, frame)
 
-                self.algo_observer.after_print_stats(frame, epoch_num, total_time)
+                self.algo_observer.after_print_stats(frame, epoch_num, total_time)  #! run.py의 RLGPUALgoObserver
                 
                 if self.game_rewards.current_size > 0:
                     mean_rewards = self._get_mean_rewards()
@@ -174,7 +182,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
                             int_model_output_file = model_output_file + '_' + str(epoch_num).zfill(8)
                             self.save(int_model_output_file)
 
-                if epoch_num > self.max_epochs:
+                if epoch_num > self.max_epochs: #! config[max_epochs]
                     self.save(model_output_file)
                     print('MAX EPOCHS NUM!')
                     return self.last_mean_rewards, epoch_num
@@ -265,8 +273,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
         train_info['play_time'] = play_time
         train_info['update_time'] = update_time
         train_info['total_time'] = total_time
+        print("before: ", train_info.keys())
         self._record_train_batch_info(batch_dict, train_info)
-
+        print("after: ", train_info.keys())
+        exit()
         return train_info
 
     def play_steps(self):
@@ -477,6 +487,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return mb_advs
 
     def env_reset(self, env_ids=None):
+        #! vec_env = __main__.RLGPUEnv
         obs = self.vec_env.reset(env_ids)
         obs = self.obs_to_tensors(obs)
         return obs

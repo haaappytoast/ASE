@@ -53,6 +53,7 @@ class AMPBuilder(network_builder.A2CBuilder):
                     sigma_init(self.sigma)
                     
             amp_input_shape = kwargs.get('amp_input_shape')
+            #! discriminator network 쌓는 code
             self._build_disc(amp_input_shape)
 
             return
@@ -123,6 +124,7 @@ class AMPBuilder(network_builder.A2CBuilder):
             weights.append(torch.flatten(self._disc_logits.weight))
             return weights
 
+        #! discriminator mlp 쌓는 방법!
         def _build_disc(self, input_shape):
             self._disc_mlp = nn.Sequential()
 
