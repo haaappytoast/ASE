@@ -44,12 +44,15 @@ class VecTaskGPUWrapper(VecTaskGPU):
 
 class VecTaskPythonWrapper(VecTaskPython):
     def __init__(self, task, rl_device, clip_observations=5.0, clip_actions=1.0):
-        super().__init__(task, rl_device, clip_observations, clip_actions)
 
+        super().__init__(task, rl_device, clip_observations, clip_actions)
         self._amp_obs_space = spaces.Box(np.ones(task.get_num_amp_obs()) * -np.Inf, np.ones(task.get_num_amp_obs()) * np.Inf)
         return
 
     def reset(self, env_ids=None):
+        #! self.task = env.tasks.humanoid_deepmm.HumanoidDeepmm
+                 
+
         self.task.reset(env_ids)
         return torch.clamp(self.task.obs_buf, -self.clip_obs, self.clip_obs).to(self.rl_device)
 

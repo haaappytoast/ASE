@@ -64,6 +64,7 @@ def parse_task(args, cfg, cfg_train, sim_params):
 
     try:
         #! 잘보면, Humanoid의 parameter와 같음. 대박!
+        #! args.task => argument로 주어주는 task
         task = eval(args.task)(
             cfg=cfg,
             sim_params=sim_params,

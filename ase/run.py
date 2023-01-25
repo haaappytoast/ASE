@@ -51,15 +51,6 @@ from learning import amp_players
 from learning import amp_models
 from learning import amp_network_builder
 
-# from learning import ase_agent
-# from learning import ase_players
-# from learning import ase_models
-# from learning import ase_network_builder
-
-# from learning import hrl_agent
-# from learning import hrl_players
-# from learning import hrl_models
-# from learning import hrl_network_builder
 
 args = None
 cfg = None
@@ -163,6 +154,7 @@ class RLGPUEnv(vecenv.IVecEnv):
             return self.full_state["obs"], reward, is_done, info
 
     def reset(self, env_ids=None):
+        #! self.env => vec_task_wrapper.py
         self.full_state["obs"] = self.env.reset(env_ids)
         if self.use_global_obs:
             self.full_state["states"] = self.env.get_state()
@@ -175,8 +167,8 @@ class RLGPUEnv(vecenv.IVecEnv):
 
     def get_env_info(self):
         info = {}
-        info['action_space'] = self.env.action_space
-        info['observation_space'] = self.env.observation_space
+        info['action_space'] = self.env.action_space                        # VecTask() -> self.act_space -> spaces.Box
+        info['observation_space'] = self.env.observation_space              # VecTask() -> self.obs_space -> spaces.Box
         info['amp_observation_space'] = self.env.amp_observation_space
 
         if self.use_global_obs:
@@ -215,8 +207,8 @@ def build_alg_runner(algo_observer):
     
     runner.algo_factory.register_builder('amp', lambda **kwargs : amp_agent.AMPAgent(**kwargs))
     runner.player_factory.register_builder('amp', lambda **kwargs : amp_players.AMPPlayerContinuous(**kwargs))
-    runner.model_builder.model_factory.register_builder('amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network))  
-    runner.model_builder.network_factory.register_builder('amp', lambda **kwargs : amp_network_builder.AMPBuilder())
+    runner.model_builder.model_factory.register_builder('amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network)) # ModelA2CContinuousLogStd 
+    runner.model_builder.network_factory.register_builder('amp', lambda **kwargs : amp_network_builder.AMPBuilder())              # network_builder.A2CBuilder
     
     # runner.algo_factory.register_builder('ase', lambda **kwargs : ase_agent.ASEAgent(**kwargs))
     # runner.player_factory.register_builder('ase', lambda **kwargs : ase_players.ASEPlayer(**kwargs))

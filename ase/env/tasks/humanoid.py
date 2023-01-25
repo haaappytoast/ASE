@@ -66,7 +66,7 @@ class Humanoid(BaseTask):
         self.cfg["device_type"] = device_type
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
-         
+
         super().__init__(cfg=self.cfg)
         
         self.dt = self.control_freq_inv * sim_params.dt #! (2 * 1 / 60)
@@ -169,12 +169,18 @@ class Humanoid(BaseTask):
 
     def _reset_envs(self, env_ids):
         if (len(env_ids) > 0):
+            #! humanoid_deepmm에 Initialization Strategy에 따라 ref state 다시 initialize 해주는 코드!
+            #! reset_env also
+            
             self._reset_actors(env_ids)
+            #! ref state buffer를 initialize 해주는 코드!
             self._reset_env_tensors(env_ids)
             self._refresh_sim_tensors()
+            #! compute humanoid state -> 이걸로 그냥 실행 / humanoid_amp_task는 task obs랑 concat해줌
             self._compute_observations(env_ids)
         return
 
+    #! reset "actor" BUFFERS!
     def _reset_env_tensors(self, env_ids):
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
@@ -206,8 +212,8 @@ class Humanoid(BaseTask):
             self._dof_body_ids = [1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14] #! body that has joints attached!
             self._dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
             self._dof_obs_size = 72     #! 6 (joint_obs_size) * 12 (num_joints)
-            self._num_actions = 28
-                            #! root_h + num_body * (pos, rot, ?, ?) - ?
+            self._num_actions = 28      #! num_dof
+                            #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
             self._num_obs = 1 + 15 * (3 + 6 + 3 + 3) - 3
             
         elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
@@ -282,7 +288,7 @@ class Humanoid(BaseTask):
         self.num_dof = self.gym.get_asset_dof_count(humanoid_asset)             #! <- 31
         self.num_joints = self.gym.get_asset_joint_count(humanoid_asset)        #! <- 34
 
-        self.humanoid_handles = []
+        self.humanoid_handles = []                                              #! <- actor handles for getting handle of humanoid in the asset file 
         self.envs = []
         self.dof_limits_lower = []
         self.dof_limits_upper = []
@@ -412,10 +418,12 @@ class Humanoid(BaseTask):
         self.gym.refresh_net_contact_force_tensor(self.sim)
         return
 
+    #! humanoid obs computing
     def _compute_observations(self, env_ids=None):
         obs = self._compute_humanoid_obs(env_ids)
 
         if (env_ids is None):
+            #? humanoid_deepmm.py의 self._amp_obs_buf 와 뭐가 다른걸까?
             self.obs_buf[:] = obs
         else:
             self.obs_buf[env_ids] = obs
@@ -438,6 +446,7 @@ class Humanoid(BaseTask):
                                                 self._root_height_obs)
         return obs
 
+    #! deepmm에 overriding됨
     def _reset_actors(self, env_ids):
         self._humanoid_root_states[env_ids] = self._initial_humanoid_root_states[env_ids]
         self._dof_pos[env_ids] = self._initial_dof_pos[env_ids]
@@ -676,7 +685,7 @@ def compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel
 @torch.jit.script
 def compute_humanoid_reward(obs_buf):
     # type: (Tensor) -> Tensor
-    reward = torch.ones_like(obs_buf[:, 0])
+    reward = torch.ones_like(obs_buf[:, 0]) #! 1개
     return reward
 
 @torch.jit.script

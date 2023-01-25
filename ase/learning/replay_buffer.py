@@ -58,6 +58,7 @@ class ReplayBuffer():
 
 
         n = next(iter(data_dict.values())).shape[0]
+
         buffer_size = self.get_buffer_size()
         assert(n <= buffer_size)
 
@@ -107,8 +108,9 @@ class ReplayBuffer():
         buffer_size = self.get_buffer_size()
         self._data_buf = dict()
 
-        for k, v in data_dict.items():  #! k: amp_obs, v: 그에 해당하는 sample값(4, 1400)
+        for k, v in data_dict.items():  
+            #! k: amp_obs
+            #! v: 그에 해당하는 sample값 (['amp_batch_size], self._num_amp_obs_steps * self._num_amp_obs_per_step)
             v_shape = v.shape[1:]
-            self._data_buf[k] = torch.zeros((buffer_size,) + v_shape, device=self._device)
-
+            self._data_buf[k] = torch.zeros((buffer_size,) + v_shape, device=self._device)  #! shape = amp_obs_demo_buffer_size, self._num_amp_obs_steps * self._num_amp_obs_per_step
         return
