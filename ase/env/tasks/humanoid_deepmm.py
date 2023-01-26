@@ -375,6 +375,10 @@ class HumanoidDeepmm(Humanoid):
     #             pass
     #     return
 
+    def _compute_reward(self, actions):
+        #! should implement here for deepmm rewards
+        return
+
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
