@@ -376,14 +376,13 @@ class HumanoidDeepmm(Humanoid):
     #     return
 
     def _compute_reward(self, actions):
-        #! should implement here for deepmm rewards
+        self.rew_buf[:] = compute_deepmm_reward(self.obs_buf)
         return
 
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
 
-@torch.jit.script
 # def build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos, 
 #                            local_root_obs, root_height_obs, dof_obs_size, dof_offsets):
 #     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, int, List[int]) -> Tensor
@@ -423,3 +422,10 @@ class HumanoidDeepmm(Humanoid):
 #     obs = torch.cat((root_h_obs, root_rot_obs, local_root_vel, local_root_ang_vel, dof_obs, dof_vel, flat_local_key_pos), dim=-1)
 
 #     return obs
+
+@torch.jit.script
+def compute_deepmm_reward(obs_buf):
+    # type: (Tensor) -> Tensor
+    reward = torch.ones_like(obs_buf[:, 0]) #! 1개
+    print("reward inside deepmm: ", reward)
+    return reward

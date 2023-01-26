@@ -52,9 +52,9 @@ class DeepmmBuilder(network_builder.A2CBuilder):
                     self.sigma = nn.Parameter(torch.zeros(actions_num, requires_grad=False, dtype=torch.float32), requires_grad=False)
                     sigma_init(self.sigma)
                     
-            amp_input_shape = kwargs.get('amp_input_shape')
-            #! discriminator network 쌓는 code
-            self._build_disc(amp_input_shape)
+            # amp_input_shape = kwargs.get('amp_input_shape')
+            # #! discriminator network 쌓는 code
+            # self._build_disc(amp_input_shape)
 
             return
 
@@ -108,48 +108,48 @@ class DeepmmBuilder(network_builder.A2CBuilder):
             value = self.value_act(self.value(c_out))   #! value activation -> defined in network_builder.py
             return value
 
-        def eval_disc(self, amp_obs):
-            disc_mlp_out = self._disc_mlp(amp_obs)
-            disc_logits = self._disc_logits(disc_mlp_out)
-            return disc_logits
+        # def eval_disc(self, amp_obs):
+        #     disc_mlp_out = self._disc_mlp(amp_obs)
+        #     disc_logits = self._disc_logits(disc_mlp_out)
+        #     return disc_logits
 
-        def get_disc_logit_weights(self):
-            return torch.flatten(self._disc_logits.weight)
+        # def get_disc_logit_weights(self):
+        #     return torch.flatten(self._disc_logits.weight)
 
-        def get_disc_weights(self):
-            weights = []
-            for m in self._disc_mlp.modules():
-                if isinstance(m, nn.Linear):
-                    weights.append(torch.flatten(m.weight))
+        # def get_disc_weights(self):
+        #     weights = []
+        #     for m in self._disc_mlp.modules():
+        #         if isinstance(m, nn.Linear):
+        #             weights.append(torch.flatten(m.weight))
 
-            weights.append(torch.flatten(self._disc_logits.weight))
-            return weights
+        #     weights.append(torch.flatten(self._disc_logits.weight))
+        #     return weights
 
-        def _build_disc(self, input_shape):
-            self._disc_mlp = nn.Sequential()
+        # def _build_disc(self, input_shape):
+        #     self._disc_mlp = nn.Sequential()
 
-            mlp_args = {
-                'input_size' : input_shape[0], 
-                'units' : self._disc_units, 
-                'activation' : self._disc_activation, 
-                'dense_func' : torch.nn.Linear
-            }
-            self._disc_mlp = self._build_mlp(**mlp_args)
+        #     mlp_args = {
+        #         'input_size' : input_shape[0], 
+        #         'units' : self._disc_units, 
+        #         'activation' : self._disc_activation, 
+        #         'dense_func' : torch.nn.Linear
+        #     }
+        #     self._disc_mlp = self._build_mlp(**mlp_args)
             
-            mlp_out_size = self._disc_units[-1]
-            self._disc_logits = torch.nn.Linear(mlp_out_size, 1)
+        #     mlp_out_size = self._disc_units[-1]
+        #     self._disc_logits = torch.nn.Linear(mlp_out_size, 1)
 
-            mlp_init = self.init_factory.create(**self._disc_initializer)
-            for m in self._disc_mlp.modules():
-                if isinstance(m, nn.Linear):
-                    mlp_init(m.weight)
-                    if getattr(m, "bias", None) is not None:
-                        torch.nn.init.zeros_(m.bias) 
+        #     mlp_init = self.init_factory.create(**self._disc_initializer)
+        #     for m in self._disc_mlp.modules():
+        #         if isinstance(m, nn.Linear):
+        #             mlp_init(m.weight)
+        #             if getattr(m, "bias", None) is not None:
+        #                 torch.nn.init.zeros_(m.bias) 
 
-            torch.nn.init.uniform_(self._disc_logits.weight, -DISC_LOGIT_INIT_SCALE, DISC_LOGIT_INIT_SCALE)
-            torch.nn.init.zeros_(self._disc_logits.bias) 
+        #     torch.nn.init.uniform_(self._disc_logits.weight, -DISC_LOGIT_INIT_SCALE, DISC_LOGIT_INIT_SCALE)
+        #     torch.nn.init.zeros_(self._disc_logits.bias) 
 
-            return
+        #     return
 
     def build(self, name, **kwargs):
         #!! should be always changed
