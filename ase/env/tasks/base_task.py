@@ -410,6 +410,7 @@ class BaseTask():
     def _physics_step(self):
         for i in range(self.control_freq_inv):
             self.render()
+            #! simulation forward for sim_params.dt
             self.gym.simulate(self.sim)
         return
 

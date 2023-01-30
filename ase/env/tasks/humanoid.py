@@ -67,7 +67,7 @@ class Humanoid(BaseTask):
         self.cfg["device_id"] = device_id
         self.cfg["headless"] = headless
 
-        super().__init__(cfg=self.cfg)
+        super().__init__(cfg=self.cfg)  #! create_sim() -> _create_envs() -> _build_env() -> create_actor
         
         self.dt = self.control_freq_inv * sim_params.dt #! (2 * 1 / 60)
         
@@ -75,8 +75,9 @@ class Humanoid(BaseTask):
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)   #! shape: (16, 13)   (self.num_envs * num_actors, actor_root_state (pos, rot, lin vel, ang vel)) 
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)          #! shape: (496, 2) (num_env * dof, 2) -> position, velocity
         sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)          #! shape: (32, 6) 6:  forces (3) and torques (3) 
-        rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)   #! global rotation / shape: (272, 13):  position([0:3]), rotation([3:7]), linear velocity([7:10]), and angular velocity([10:13]
+        rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)   #! global rotation / shape: (num_rigid_bodies * num_envs, 13):  position([:, 0:3]), rotation([3:7]), linear velocity([7:10]), and angular velocity([10:13]
         contact_force_tensor = self.gym.acquire_net_contact_force_tensor(self.sim)  # shape: (272, 3)
+
 
         sensors_per_env = 2
         self.vec_sensor_tensor = gymtorch.wrap_tensor(sensor_tensor).view(self.num_envs, sensors_per_env * 6)
@@ -88,6 +89,7 @@ class Humanoid(BaseTask):
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
+
 
         self._root_states = gymtorch.wrap_tensor(actor_root_state)  
         num_actors = self.get_num_actors_per_env()
@@ -107,7 +109,11 @@ class Humanoid(BaseTask):
         self._initial_dof_pos = torch.zeros_like(self._dof_pos, device=self.device, dtype=torch.float)  #! <- initial dof pos 0으로 저장
         self._initial_dof_vel = torch.zeros_like(self._dof_vel, device=self.device, dtype=torch.float)  #! <- initial dof vel 0으로 저장
         
-        self._rigid_body_state = gymtorch.wrap_tensor(rigid_body_state) #!<- shape: (272, 13)
+        self._rigid_body_state = gymtorch.wrap_tensor(rigid_body_state) #! <- shape: (272, 13)
+
+        # print("actor_root_state: ", self._root_states[:, 0:3])
+        # print("rigid_body_state: ", self._rigid_body_state[[0, 15, 30, 45, 60, 75], 0:3])
+
         bodies_per_env = self._rigid_body_state.shape[0] // self.num_envs
         rigid_body_state_reshaped = self._rigid_body_state.view(self.num_envs, bodies_per_env, 13)  #! <- (1, 272, 13)
 
@@ -423,7 +429,6 @@ class Humanoid(BaseTask):
         obs = self._compute_humanoid_obs(env_ids)
 
         if (env_ids is None):
-            #? humanoid_deepmm.py의 self._amp_obs_buf 와 뭐가 다른걸까?
             self.obs_buf[:] = obs
         else:
             self.obs_buf[env_ids] = obs
