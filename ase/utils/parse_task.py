@@ -28,6 +28,7 @@
 
 #!! should be always changed
 from env.tasks.humanoid_deepmm import HumanoidDeepmm
+from env.tasks.humanoid_view_motions import HumanoidViewMotions
 
 from env.tasks.humanoid import Humanoid
 from env.tasks.humanoid_amp import HumanoidAMP
@@ -38,7 +39,8 @@ from env.tasks.humanoid_strike import HumanoidStrike
 from env.tasks.humanoid_reach import HumanoidReach
 from env.tasks.humanoid_perturb import HumanoidPerturb
 from env.tasks.humanoid_view_motion import HumanoidViewMotion
-from env.tasks.vec_task_wrappers import VecTaskPythonWrapper
+#! added for deepmm
+from env.tasks.vec_task_wrappers import VecTaskPythonWrapper, VecTaskDeepmmWrapper
 
 from isaacgym import rlgpu
 
@@ -75,8 +77,14 @@ def parse_task(args, cfg, cfg_train, sim_params):
     except NameError as e:
         print(e)
         warn_task_name()
+
     # dict.get(key, value): 해당 키가 dict에 없을 때 value값 할당하고 value값 가져오기        
     # Task: Humanoid인거지!
-    env = VecTaskPythonWrapper(task, rl_device, cfg_train.get("clip_observations", np.inf), cfg_train.get("clip_actions", 1.0))
+    env_name = cfg_train['params']['config']['env_name']
+    if(env_name =='rlgpu'):
+        env = VecTaskPythonWrapper(task, rl_device, cfg_train.get("clip_observations", np.inf), cfg_train.get("clip_actions", 1.0))
+    elif (env_name == 'mimic'):
+        #! added for deepmm
+        env = VecTaskDeepmmWrapper(task, rl_device, cfg_train.get("clip_observations", np.inf), cfg_train.get("clip_actions", 1.0))
 
     return task, env
