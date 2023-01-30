@@ -143,7 +143,7 @@ class MimicEnv(vecenv.IVecEnv):
         return
 
     def step(self, action):
-        next_obs, reward, is_done, info = self.env.step(action)
+        next_obs, reward, is_done, info = self.env.step(action) #! env.step --> goes to VecTaskPython.step() -> self.task.step() -> goes to base_task.py -> post_physics_step()
 
         # todo: improve, return only dictinary
         self.full_state["obs"] = next_obs

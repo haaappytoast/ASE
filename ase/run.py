@@ -41,11 +41,6 @@ import numpy as np
 import copy
 import torch
 
-from learning import deepmm_agent
-from learning import deepmm_players
-from learning import deepmm_models
-from learning import deepmm_network_builder
-
 from learning import amp_agent
 from learning import amp_players
 from learning import amp_models
@@ -199,11 +194,6 @@ env_configurations.register('rlgpu', {
 
 def build_alg_runner(algo_observer):
     runner = Runner(algo_observer)
-
-    runner.algo_factory.register_builder('deepmm', lambda **kwargs : deepmm_agent.DeepmmAgent(**kwargs))
-    runner.player_factory.register_builder('deepmm', lambda **kwargs : deepmm_players.DeepmmPlayerContinuous(**kwargs))
-    runner.model_builder.model_factory.register_builder('deepmm', lambda network, **kwargs : deepmm_models.ModelDeepmmContinuous(network))  
-    runner.model_builder.network_factory.register_builder('deepmm', lambda **kwargs : deepmm_network_builder.DeepmmBuilder())
     
     runner.algo_factory.register_builder('amp', lambda **kwargs : amp_agent.AMPAgent(**kwargs))
     runner.player_factory.register_builder('amp', lambda **kwargs : amp_players.AMPPlayerContinuous(**kwargs))
