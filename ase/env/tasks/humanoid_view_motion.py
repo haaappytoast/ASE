@@ -46,14 +46,15 @@ class HumanoidViewMotion(HumanoidAMP):
                          physics_engine=physics_engine,
                          device_type=device_type,
                          device_id=device_id,
-                         headless=headless)
+                         headless=headless) #! create_sim() -> _create_envs() -> _build_env() -> create_actor
         
         num_motions = self._motion_lib.num_motions()
         self._motion_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
         self._motion_ids = torch.remainder(self._motion_ids, num_motions)
 
         return
-
+    
+    # apply actions -> here no forces
     def pre_physics_step(self, actions):
         self.actions = actions.to(self.device).clone()
         forces = torch.zeros_like(self.actions)
@@ -115,6 +116,7 @@ class HumanoidViewMotion(HumanoidAMP):
         self.reset_buf[env_ids] = 0
         self._terminate_buf[env_ids] = 0
         return
+
 
 @torch.jit.script
 def compute_view_motion_reset(reset_buf, motion_lengths, progress_buf, dt):
