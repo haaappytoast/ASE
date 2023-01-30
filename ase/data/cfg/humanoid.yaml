@@ -18,6 +18,7 @@ env:
   contactBodies: ["right_foot", "left_foot"]
   terminationHeight: 0.15
   enableEarlyTermination: True
+  useComreward: True 
 
   asset:
     assetRoot: "ase/data/assets"

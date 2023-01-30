@@ -93,6 +93,7 @@ class AMPAgent(common_agent.CommonAgent):
         done_indices = []
         update_list = self.update_list
 
+        #! agent receives a task-reward r^G from the envrionment
         for n in range(self.horizon_length):
 
             self.obs = self.env_reset(done_indices)
@@ -148,6 +149,8 @@ class AMPAgent(common_agent.CommonAgent):
         mb_next_values = self.experience_buffer.tensor_dict['next_values']
 
         mb_rewards = self.experience_buffer.tensor_dict['rewards']
+        
+        #! queries the motion prior for reward
         mb_amp_obs = self.experience_buffer.tensor_dict['amp_obs']
         amp_rewards = self._calc_amp_rewards(mb_amp_obs)
         mb_rewards = self._combine_rewards(mb_rewards, amp_rewards)
@@ -219,9 +222,9 @@ class AMPAgent(common_agent.CommonAgent):
         update_time_start = time.time()
         rnn_masks = batch_dict.get('rnn_masks', None)
         
-        self._update_amp_demos()
-        num_obs_samples = batch_dict['amp_obs'].shape[0]
-        amp_obs_demo = self._amp_obs_demo_buffer.sample(num_obs_samples)['amp_obs']
+        self._update_amp_demos()    #! 새로운  [amp_batch_size x 1250]만큼 amp_obs_demo를 새롭게 buffer에 저장
+        num_obs_samples = batch_dict['amp_obs'].shape[0]    #! num_obs_samples = horizontal_length
+        amp_obs_demo = self._amp_obs_demo_buffer.sample(num_obs_samples)['amp_obs'] #!  demo_buffer에서 horizontal_length개 sample / amp_obs_demo size: [horizontal_length, 1250]
         batch_dict['amp_obs_demo'] = amp_obs_demo
 
         if (self._amp_replay_buffer.get_total_count() == 0):
@@ -244,11 +247,11 @@ class AMPAgent(common_agent.CommonAgent):
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
 
-        for _ in range(0, self.mini_epochs_num):
+        for _ in range(0, self.mini_epochs_num):    #! self.config['mini_epochs'] 
             ep_kls = []
             for i in range(len(self.dataset)):
                 #! training step!
-                curr_train_info = self.train_actor_critic(self.dataset[i])
+                curr_train_info = self.train_actor_critic(self.dataset[i])  #! cal_gradient인데, 이 함수 안에서 batch_dict 중 amp_minibatch_size 만큼 train 시킴
                 
                 if self.schedule_type == 'legacy':  
                     if self.multi_gpu:
@@ -302,7 +305,7 @@ class AMPAgent(common_agent.CommonAgent):
         old_sigma_batch = input_dict['sigma']
         return_batch = input_dict['returns']
         actions_batch = input_dict['actions']
-        obs_batch = input_dict['obs']
+        obs_batch = input_dict['obs']   #! torch.Size([minibatch_size, num_obs])
         obs_batch = self._preproc_obs(obs_batch)
 
         amp_obs = input_dict['amp_obs'][0:self._amp_minibatch_size]
@@ -310,6 +313,7 @@ class AMPAgent(common_agent.CommonAgent):
         amp_obs_replay = input_dict['amp_obs_replay'][0:self._amp_minibatch_size]
         amp_obs_replay = self._preproc_amp_obs(amp_obs_replay)
 
+        #! batch_size 개의 amp_obs_demo에서 amp_minibatch_size만큼만 calc_gradients에서 쓰임.
         amp_obs_demo = input_dict['amp_obs_demo'][0:self._amp_minibatch_size]
         amp_obs_demo = self._preproc_amp_obs(amp_obs_demo)
         amp_obs_demo.requires_grad_(True)
@@ -558,7 +562,7 @@ class AMPAgent(common_agent.CommonAgent):
         return
     
     def _update_amp_demos(self):
-        new_amp_obs_demo = self._fetch_amp_obs_demo(self._amp_batch_size)
+        new_amp_obs_demo = self._fetch_amp_obs_demo(self._amp_batch_size)   #! config.amp_batch_size
         self._amp_obs_demo_buffer.store({'amp_obs': new_amp_obs_demo})
         return
 
@@ -602,8 +606,7 @@ class AMPAgent(common_agent.CommonAgent):
             disc_logits = self._eval_disc(amp_obs)
             prob = 1 / (1 + torch.exp(-disc_logits)) 
             disc_r = -torch.log(torch.maximum(1 - prob, torch.tensor(0.0001, device=self.ppo_device)))
-            disc_r *= self._disc_reward_scale
-
+            disc_r *= self._disc_reward_scale   #! disc_r.shape = torch.Size([horizontal_length, 1, 1])
         return disc_r
 
     def _store_replay_amp_obs(self, amp_obs):
