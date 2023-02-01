@@ -276,7 +276,6 @@ class CommonAgent(a2c_continuous.A2CAgent):
         print("before: ", train_info.keys())
         self._record_train_batch_info(batch_dict, train_info)
         print("after: ", train_info.keys())
-        exit()
         return train_info
 
     def play_steps(self):

@@ -95,7 +95,7 @@ class AMPAgent(common_agent.CommonAgent):
 
         #! agent receives a task-reward r^G from the envrionment
         for n in range(self.horizon_length):
-
+            #! RLGPUEnv.reset -> VecTaskPythonWrapper.reset() -> Humanoid.reset() -> Humanoid*._reset_envs() -> _compute_observations() -> obs_buf에 obs 저장해줌
             self.obs = self.env_reset(done_indices)
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
 
@@ -111,13 +111,16 @@ class AMPAgent(common_agent.CommonAgent):
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
 
+            #! 여기서 model에서 explore한 actions으로 obs, reward, dones, infos 가져오기
+            #! go to run.py -> IVecEnv의 step으로 감
             self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])
             shaped_rewards = self.rewards_shaper(rewards)
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
             self.experience_buffer.update_data('next_obses', n, self.obs['obs'])
             self.experience_buffer.update_data('dones', n, self.dones)
-            self.experience_buffer.update_data('amp_obs', n, infos['amp_obs'])
+            self.experience_buffer.update_data('amp_obs', n, infos['amp_obs'])  # torch.size([1, amp_obs_size(1250)])
             self.experience_buffer.update_data('rand_action_mask', n, res_dict['rand_action_mask'])
+
 
             terminated = infos['terminate'].float()
             terminated = terminated.unsqueeze(-1)
@@ -144,14 +147,14 @@ class AMPAgent(common_agent.CommonAgent):
                 
             done_indices = done_indices[:, 0]
 
-        mb_fdones = self.experience_buffer.tensor_dict['dones'].float()
+        mb_fdones = self.experience_buffer.tensor_dict['dones'].float() 
         mb_values = self.experience_buffer.tensor_dict['values']
         mb_next_values = self.experience_buffer.tensor_dict['next_values']
 
         mb_rewards = self.experience_buffer.tensor_dict['rewards']
         
         #! queries the motion prior for reward
-        mb_amp_obs = self.experience_buffer.tensor_dict['amp_obs']
+        mb_amp_obs = self.experience_buffer.tensor_dict['amp_obs']  # minibatch amp_obs = [horizontal_length, 1, amp_obs_size(1250)]
         amp_rewards = self._calc_amp_rewards(mb_amp_obs)
         mb_rewards = self._combine_rewards(mb_rewards, amp_rewards)
 

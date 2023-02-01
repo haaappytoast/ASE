@@ -102,8 +102,9 @@ class DeepmmAgent(common_agent.CommonAgent):
         done_indices = []
         update_list = self.update_list
         for n in range(self.horizon_length):
+            #! MimicEnv.reset -> VecTaskPythonWrapper.reset() -> Humanoid.reset() -> Humanoid*._reset_envs() -> _compute_observations() -> obs_buf에 obs 저장해줌
+            self.obs = self.env_reset(done_indices) #! go to common_agent.py
 
-            self.obs = self.env_reset(done_indices)
             self.experience_buffer.update_data('obses', n, self.obs['obs']) #! size: [1,223]
 
             if self.use_action_masks:
@@ -120,6 +121,7 @@ class DeepmmAgent(common_agent.CommonAgent):
                 self.experience_buffer.update_data('states', n, self.obs['states'])
 
             #! 여기서 model에서 explore한 actions으로 obs, reward, dones, infos 가져오기
+            #! go to run.py -> IVecEnv의 step으로 감 -> 
             self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])   #! reward <- humanoid.py의 _compute_reward()
             shaped_rewards = self.rewards_shaper(rewards)
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
@@ -156,7 +158,6 @@ class DeepmmAgent(common_agent.CommonAgent):
                 print("*"*20)
                 
             done_indices = done_indices[:, 0]
-
         mb_fdones = self.experience_buffer.tensor_dict['dones'].float()
         mb_values = self.experience_buffer.tensor_dict['values']
         mb_next_values = self.experience_buffer.tensor_dict['next_values']
