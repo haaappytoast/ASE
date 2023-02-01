@@ -36,9 +36,8 @@ from utils.motion_lib import MotionLib
 class HumanoidViewMotions(Humanoid):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         control_freq_inv = cfg["env"]["controlFrequencyInv"]
-        self._motion_dt = control_freq_inv * sim_params.dt
-
-        cfg["env"]["controlFrequencyInv"] = 1
+        self._motion_dt = control_freq_inv * sim_params.dt  #! 1/30
+        cfg["env"]["controlFrequencyInv"] = 1               #? why??? -> by this one, self.dt = 1/60 으로 setting 됌.
         cfg["env"]["pdControl"] = False
 
         super().__init__(cfg=cfg,
@@ -53,8 +52,7 @@ class HumanoidViewMotions(Humanoid):
 
         num_motions = self._motion_lib.num_motions()
         self._motion_ids = torch.arange(self.num_envs, device=self.device, dtype=torch.long)
-        self._motion_ids = torch.remainder(self._motion_ids, num_motions)
-
+        self._motion_ids = torch.remainder(self._motion_ids, num_motions)   #! motion_ids를 num_envs 개수만큼 fitting 시켜줌. 
         return
     
     # apply actions -> here no forces
@@ -71,7 +69,7 @@ class HumanoidViewMotions(Humanoid):
         return
     
     def _get_humanoid_collision_filter(self):
-        return 1 # disable self collisions
+        return 0 # disable self collisions
 
     def _motion_sync(self):
         num_motions = self._motion_lib.num_motions()
@@ -81,11 +79,14 @@ class HumanoidViewMotions(Humanoid):
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
            = self._motion_lib.get_motion_state(motion_ids, motion_times)
         
+
+        #? why set to 0? -> just to make humanoid follow positions
         root_vel = torch.zeros_like(root_vel)
         root_ang_vel = torch.zeros_like(root_ang_vel)
         dof_vel = torch.zeros_like(dof_vel)
 
         env_ids = torch.arange(self.num_envs, dtype=torch.long, device=self.device)
+        #! 이 코드 + set_actor_root_state_tensor_indexed()에 의해서 simulation되면서 motion을 따라가게 된다!
         self._set_env_state(env_ids=env_ids, 
                             root_pos=root_pos, 
                             root_rot=root_rot, 
@@ -93,6 +94,10 @@ class HumanoidViewMotions(Humanoid):
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
+
+        # print("root_vel: ", self._root_states[:, 7:10])
+        # print("root_ang_vel: ", self._root_states[:, 10:13])
+        # print("dof_vel: ", self._dof_state[:, 1])
 
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
