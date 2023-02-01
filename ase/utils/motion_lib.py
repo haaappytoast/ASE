@@ -127,7 +127,7 @@ class MotionLib():
         return self._motions[motion_id]
 
     def sample_motions(self, n):
-        motion_ids = torch.multinomial(self._motion_weights, num_samples=n, replacement=True)
+        motion_ids = torch.multinomial(self._motion_weights, num_samples=n, replacement=True)   #! n = num_env
 
         # m = self.num_motions()
         # motion_ids = np.random.choice(m, size=n, replace=True, p=self._motion_weights)
@@ -135,29 +135,28 @@ class MotionLib():
         return motion_ids
 
     def sample_time(self, motion_ids, truncate_time=None):
-        n = len(motion_ids)
-        phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
+        n = len(motion_ids) #! n = env_nums
+        phase = torch.rand(motion_ids.shape, device=self._device)   #! get (0~1) phase for each env
         
-        motion_len = self._motion_lengths[motion_ids]
+        motion_len = self._motion_lengths[motion_ids]               #! get correspond motion length for each env
         if (truncate_time is not None):
             assert(truncate_time >= 0.0)
             motion_len -= truncate_time
 
-        motion_time = phase * motion_len    # shape: [num_samples]
+        motion_time = phase * motion_len                            #! get correspond motion time(recorded time)
         return motion_time
 
     def get_motion_length(self, motion_ids):
         return self._motion_lengths[motion_ids]
 
     def get_motion_state(self, motion_ids, motion_times):
-        #? 그 전에는 motion ids, motion_times 모두 size= num_sample인 tensor였는데 len = 1??
-        n = len(motion_ids)
+        n = len(motion_ids)                                 #! get motion number for each env
         num_bodies = self._get_num_bodies()
         num_key_bodies = self._key_body_ids.shape[0]
 
-        motion_len = self._motion_lengths[motion_ids]       # 1.3
-        num_frames = self._motion_num_frames[motion_ids]    # 40
-        dt = self._motion_dt[motion_ids]                    # 1 / 30
+        motion_len = self._motion_lengths[motion_ids]       # get motion time w.r.t real recorded time
+        num_frames = self._motion_num_frames[motion_ids]    # total frame num
+        dt = self._motion_dt[motion_ids]                    # motion time per frame
         #? blend가 왜 필요하지?
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
 
