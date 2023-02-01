@@ -127,7 +127,7 @@ class MotionLib():
         return self._motions[motion_id]
 
     def sample_motions(self, n):
-        motion_ids = torch.multinomial(self._motion_weights, num_samples=n, replacement=True)   #! n = num_env
+        motion_ids = torch.multinomial(self._motion_weights, num_samples=n, replacement=True)
 
         # m = self.num_motions()
         # motion_ids = np.random.choice(m, size=n, replace=True, p=self._motion_weights)
@@ -135,29 +135,29 @@ class MotionLib():
         return motion_ids
 
     def sample_time(self, motion_ids, truncate_time=None):
-        n = len(motion_ids) #! n = env_nums
-        phase = torch.rand(motion_ids.shape, device=self._device)   #! get (0~1) phase for each env
+        n = len(motion_ids)
+        phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
         
-        motion_len = self._motion_lengths[motion_ids]               #! get correspond motion length for each env
+        motion_len = self._motion_lengths[motion_ids]
         if (truncate_time is not None):
             assert(truncate_time >= 0.0)
             motion_len -= truncate_time
 
-        motion_time = phase * motion_len                            #! get correspond motion time(recorded time)
+        motion_time = phase * motion_len    # shape: [num_samples]
         return motion_time
 
     def get_motion_length(self, motion_ids):
         return self._motion_lengths[motion_ids]
 
     def get_motion_state(self, motion_ids, motion_times):
-        n = len(motion_ids)                                 #! get motion number for each env
+        n = len(motion_ids)
         num_bodies = self._get_num_bodies()
         num_key_bodies = self._key_body_ids.shape[0]
 
-        motion_len = self._motion_lengths[motion_ids]       # get motion time w.r.t real recorded time
-        num_frames = self._motion_num_frames[motion_ids]    # total frame num
-        dt = self._motion_dt[motion_ids]                    # motion time per frame
-        #? blend가 왜 필요하지?
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
 
         f0l = frame_idx0 + self.length_starts[motion_ids]
@@ -195,9 +195,8 @@ class MotionLib():
         blend_exp = blend.unsqueeze(-1)
         key_pos = (1.0 - blend_exp) * key_pos0 + blend_exp * key_pos1
         
-        #!  difference of local_rots
         local_rot = torch_utils.slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
-        #! dof_pos는 local 각도 theta
+        
         dof_pos = self._local_rotation_to_dof(local_rot)
 
         return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos
@@ -290,20 +289,6 @@ class MotionLib():
             motion_weights = [1.0]
 
         return motion_files, motion_weights
-    
-    ##!! The one I added
-    def _calc_phase(self, motion_ids, motion_times):
-        #? 그 전에는 motion ids, motion_times 모두 size= num_sample인 tensor였는데 len = 1??
-        n = len(motion_ids)
-        num_bodies = self._get_num_bodies()
-        num_key_bodies = self._key_body_ids.shape[0]
-
-        motion_len = self._motion_lengths[motion_ids]       # 1.3
-        phase = motion_times / motion_len
-        
-        phase = torch.clip(phase, 0.0, 1.0)
-
-        return phase
 
     def _calc_frame_blend(self, time, len, num_frames, dt):
         phase = time / len
@@ -397,3 +382,40 @@ class MotionLib():
                 assert(False)
 
         return dof_vel
+    
+    
+class DeepMimicMotionLib(MotionLib):
+    def __init__(self, motion_file, dof_body_ids, dof_offsets, key_body_ids, device):
+        super().__init__(motion_file, dof_body_ids, dof_offsets, key_body_ids, device)
+        motions = self._motions
+        self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()
+        self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
+
+    def _calc_phase(self, motion_ids, motion_times):
+        motion_len = self._motion_lengths[motion_ids]       
+        phase = motion_times/motion_len - motion_times // motion_len
+        
+        phase = torch.clip(phase, 0.0, 1.0)
+
+        return phase
+    
+    def get_motion_body_state(self, motion_ids, motion_times):
+        # return global body orn(Quat), body ang vel
+        motion_len = self._motion_lengths[motion_ids]       # sec, shape : (1, num_envs)
+        num_frames = self._motion_num_frames[motion_ids]    # frame, shape : (1, num_envs)
+        dt = self._motion_dt[motion_ids]                    # sec, shape : (1, num_envs)
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)    # shape : (1, num_envs)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+        
+        body_orn = torch.zeros((len(motion_times), len(self.grs[0]), 4), dtype=torch.float32)
+        body_ang_vel = torch.zeros((len(motion_times), len(self.gavs[0]), 3), dtype=torch.float32)
+        blend = blend.unsqueeze(-1)
+        for j in range(self._get_num_bodies()):
+            body_orn[:, j] = torch_utils.slerp(self.grs[f0l,j], self.grs[f1l,j], blend)
+            body_ang_vel[:, j] = (1.0 - blend) * self.gavs[f0l,j] + blend * self.gavs[f1l, j]
+        
+
+        return body_orn, body_ang_vel
