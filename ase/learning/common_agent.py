@@ -51,32 +51,39 @@ import learning.amp_datasets as amp_datasets
 from tensorboardX import SummaryWriter
 
 class CommonAgent(a2c_continuous.A2CAgent):
+    #! config == cfg/train/rlg 안의 ['config']
     def __init__(self, base_name, config):
-        a2c_common.A2CBase.__init__(self, base_name, config)
+        a2c_common.A2CBase.__init__(self, base_name, config)                    #! initialize continuos A2C agent
 
-        self._load_config_params(config)
+        self._load_config_params(config)                                        #! load basic params from config
 
-        self.is_discrete = False
-        self._setup_action_space()
-        self.bounds_loss_coef = config.get('bounds_loss_coef', None)
-        self.clip_actions = config.get('clip_actions', True)
-        self._save_intermediate = config.get('save_intermediate', False)
+        self.is_discrete = False                                                #! manipulate continuous case
+        self._setup_action_space()                                              #! set up action space
+        self.bounds_loss_coef = config.get('bounds_loss_coef', None)            #! bounded loss function option
+        self.clip_actions = config.get('clip_actions', True)                    #! action clipping option (default : True) 
+        self._save_intermediate = config.get('save_intermediate', False)        #! save intermediate model boolean
 
-        net_config = self._build_net_config()
-        self.model = self.network.build(net_config)
-        self.model.to(self.ppo_device)
-        self.states = None
+        net_config = self._build_net_config()                                   #! network params
 
-        self.init_rnn_from_model(self.model)
-        self.last_lr = float(self.last_lr)
+        #! self.network = -> learning.amp_models.ModelAMPContinuous (a2c_common.py 에서 지정해줌)
+        #! 여기선 self.model = -> 이 network는 ModelDeepmmContinuous.Network(net) initialize해주는 것인데
+        #! 그 안에 ModelDeepmmContinuous의 net를 빌드해주는 건 DeepmmBuilder.Network(self.params, **kwargs)
+        # net_config = 'actions_num', 'input_shape', 'num_seqs' 'value_size' 지정해줌
+        
+        self.model = self.network.build(net_config)                             #! build network from net_config
+        self.model.to(self.ppo_device)                                          #! network to device
+        self.states = None                                                      #! initialize states
 
-        self.optimizer = optim.Adam(self.model.parameters(), float(self.last_lr), eps=1e-08, weight_decay=self.weight_decay)
+        self.init_rnn_from_model(self.model)                                    #! initialize when using rnn model
+        self.last_lr = float(self.last_lr)                                      #! set recent learning rate
 
-        if self.normalize_input:
-            obs_shape = torch_ext.shape_whc_to_cwh(self.obs_shape)
-            self.running_mean_std = RunningMeanStd(obs_shape).to(self.ppo_device)
+        self.optimizer = optim.Adam(self.model.parameters(), float(self.last_lr), eps=1e-08, weight_decay=self.weight_decay)    #! set optimizer
 
-        if self.has_central_value:
+        if self.normalize_input:                                                #! if using input normalization option
+            obs_shape = torch_ext.shape_whc_to_cwh(self.obs_shape)              #! observation channel change and get shape
+            self.running_mean_std = RunningMeanStd(obs_shape).to(self.ppo_device)   #! get running mean, std of observation 
+
+        if self.has_central_value:                                              #! if using central value option
             cv_config = {
                 'state_shape' : torch_ext.shape_whc_to_cwh(self.state_shape), 
                 'value_size' : self.value_size,
@@ -93,67 +100,68 @@ class CommonAgent(a2c_continuous.A2CAgent):
             }
             self.central_value_net = central_value.CentralValueTrain(**cv_config).to(self.ppo_device)
 
-        self.use_experimental_cv = self.config.get('use_experimental_cv', True)
-        self.dataset = amp_datasets.AMPDataset(self.batch_size, self.minibatch_size, self.is_discrete, self.is_rnn, self.ppo_device, self.seq_len)
-        self.algo_observer.after_init(self)
+        self.use_experimental_cv = self.config.get('use_experimental_cv', True) #! set use experimental_cv
+        self.dataset = amp_datasets.AMPDataset(self.batch_size, self.minibatch_size, self.is_discrete, self.is_rnn, self.ppo_device, self.seq_len)  #! set dataset
+        self.algo_observer.after_init(self)                                     #! algo_observer update 
         
         return
 
     def init_tensors(self):
-        super().init_tensors()
-        self.experience_buffer.tensor_dict['next_obses'] = torch.zeros_like(self.experience_buffer.tensor_dict['obses'])
+        super().init_tensors()                                                  #! initialize tensor at a2c common level
+        self.experience_buffer.tensor_dict['next_obses'] = torch.zeros_like(self.experience_buffer.tensor_dict['obses'])        #! set next obs, value
         self.experience_buffer.tensor_dict['next_values'] = torch.zeros_like(self.experience_buffer.tensor_dict['values'])
 
-        self.tensor_list += ['next_obses']
+        self.tensor_list += ['next_obses']                                      #! add 'next_obses' property to list
         return
 
     def train(self):
-        self.init_tensors()
-        self.last_mean_rewards = -100500
-        start_time = time.time()
-        total_time = 0
-        rep_count = 0
-        self.frame = 0
-        self.obs = self.env_reset()
-        self.curr_frames = self.batch_size_envs
+        self.init_tensors()                                                     #! call amp_agent.init_tensors()
+        self.last_mean_rewards = -100500                                        #! set last mean reward(recent)
+        start_time = time.time()                                                #! set starting time
+        total_time = 0                                                          #! declare for storing total time
+        rep_count = 0                                                           #! count
+        self.frame = 0                                                          #! frame number
+        self.obs = self.env_reset()                                             #! env reset and get observation
+        self.curr_frames = self.batch_size_envs                                 #! set curr_frames = episode len * num of actor
         
-        model_output_file = os.path.join(self.nn_dir, self.config['name'])
+        model_output_file = os.path.join(self.nn_dir, self.config['name'])      #! make output directory
         
         if self.multi_gpu:
             self.hvd.setup_algo(self)
 
-        self._init_train()
 
-        while True:
-            epoch_num = self.update_epoch()
-            train_info = self.train_epoch()
+        self._init_train()                                                      #! amp_agent._init_train() -> _init_amp_demo_buf(self)
 
-            sum_time = train_info['total_time']
-            total_time += sum_time
-            frame = self.frame
+        while True:                                                             #! training loop
+            epoch_num = self.update_epoch()                                     #! one_epoch update(epoch_num+=1)
+            train_info = self.train_epoch()                                     #! go to amp_agent.train_epoch()
+
+            sum_time = train_info['total_time']                                 #! get one epoch total time
+            total_time += sum_time                                              #! get total time
+            frame = self.frame                                                  #! set frame
             if self.multi_gpu:
                 self.hvd.sync_stats(self)
 
-            if self.rank == 0:
-                scaled_time = sum_time
-                scaled_play_time = train_info['play_time']
-                curr_frames = self.curr_frames
-                self.frame += curr_frames
-                if self.print_stats:
+            if self.rank == 0:                                                  #! 1 gpu training case
+                scaled_time = sum_time                                          #! set scaled time
+                scaled_play_time = train_info['play_time']                      #! set scaled_play_time
+                curr_frames = self.curr_frames                                  #! get epoch curr frames
+                self.frame += curr_frames                                       #! set total frames
+                if self.print_stats:                                            #! print stats
                     fps_step = curr_frames / scaled_play_time
                     fps_total = curr_frames / scaled_time
                     print(f'fps step: {fps_step:.1f} fps total: {fps_total:.1f}')
 
                 self.writer.add_scalar('performance/total_fps', curr_frames / scaled_time, frame)
                 self.writer.add_scalar('performance/step_fps', curr_frames / scaled_play_time, frame)
-                self.writer.add_scalar('info/epochs', epoch_num, frame)
-                self._log_train_info(train_info, frame)
+                self.writer.add_scalar('info/epochs', epoch_num, frame)         #! writer add scalar
+                self._log_train_info(train_info, frame)                         #! write the other quantities
 
-                self.algo_observer.after_print_stats(frame, epoch_num, total_time)
+                self.algo_observer.after_print_stats(frame, epoch_num, total_time)  #! RLGPUALgoObserver in run.py, after_print_status
                 
                 if self.game_rewards.current_size > 0:
-                    mean_rewards = self._get_mean_rewards()
-                    mean_lengths = self.game_lengths.get_mean()
+                    mean_rewards = self._get_mean_rewards()                         #! get mean rewards
+                    mean_lengths = self.game_lengths.get_mean()                     #! get mean game lengths
 
                     for i in range(self.value_size):
                         self.writer.add_scalar('rewards{0}/frame'.format(i), mean_rewards[i], frame)
@@ -163,21 +171,21 @@ class CommonAgent(a2c_continuous.A2CAgent):
                     self.writer.add_scalar('episode_lengths/frame', mean_lengths, frame)
                     self.writer.add_scalar('episode_lengths/iter', mean_lengths, epoch_num)
 
-                    if self.has_self_play_config:
+                    if self.has_self_play_config:                                   #! manipulate self play option
                         self.self_play_manager.update(self)
 
-                if self.save_freq > 0:
+                if self.save_freq > 0:                                              #! save_freq = 50
                     if (epoch_num % self.save_freq == 0):
-                        self.save(model_output_file)
+                        self.save(model_output_file)                                #! save model
 
                         if (self._save_intermediate):
                             int_model_output_file = model_output_file + '_' + str(epoch_num).zfill(8)
-                            self.save(int_model_output_file)
+                            self.save(int_model_output_file)                        #! save intermediate model
 
-                if epoch_num > self.max_epochs:
-                    self.save(model_output_file)
-                    print('MAX EPOCHS NUM!')
-                    return self.last_mean_rewards, epoch_num
+                if epoch_num > self.max_epochs:                                     #! max epoch condition
+                    self.save(model_output_file)                                    #! save final model
+                    print('MAX EPOCHS NUM!')                                        #! print training finish
+                    return self.last_mean_rewards, epoch_num                        #! return best mean rewards, total epoch num
 
                 update_time = 0
         return
@@ -265,8 +273,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
         train_info['play_time'] = play_time
         train_info['update_time'] = update_time
         train_info['total_time'] = total_time
+        print("before: ", train_info.keys())
         self._record_train_batch_info(batch_dict, train_info)
-
+        print("after: ", train_info.keys())
+        exit()
         return train_info
 
     def play_steps(self):
@@ -477,8 +487,9 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return mb_advs
 
     def env_reset(self, env_ids=None):
-        obs = self.vec_env.reset(env_ids)
-        obs = self.obs_to_tensors(obs)
+        #! vec_env = __main__.RLGPUEnv
+        obs = self.vec_env.reset(env_ids)       #! env reset and get first observation
+        obs = self.obs_to_tensors(obs)          #! convert observation to tensor
         return obs
 
     def bound_loss(self, mu):
@@ -518,15 +529,15 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return
 
     def _init_train(self):
-        return
+        return                                                                              #! nothing initialize for train common agent
 
     def _eval_critic(self, obs_dict):
-        self.model.eval()
-        obs = obs_dict['obs']
-        processed_obs = self._preproc_obs(obs)
-        value = self.model.a2c_network.eval_critic(processed_obs)
+        self.model.eval()                                                                   #! set evaluation model mode
+        obs = obs_dict['obs']                                                               #! get observation 
+        processed_obs = self._preproc_obs(obs)                                              #! preprocess observation (e.g., normalize)
+        value = self.model.a2c_network.eval_critic(processed_obs)                           #! get value at observation(state)
 
-        if self.normalize_value:
+        if self.normalize_value:                                                            #! case for normalizing value function option
             value = self.value_mean_std(value, True)
         return value
 

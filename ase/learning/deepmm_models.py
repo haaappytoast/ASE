@@ -29,27 +29,34 @@
 import torch.nn as nn
 from rl_games.algos_torch.models import ModelA2CContinuousLogStd
 
-class ModelAMPContinuous(ModelA2CContinuousLogStd):
+class ModelDeepmmContinuous(ModelA2CContinuousLogStd):
     def __init__(self, network):
-        # network = learning.amp_network_builder.AMPBuilder
+        #! network = learning.deepmm_network_builder.DeepmmBuilder
         super().__init__(network)
         return
 
     def build(self, config):
-        net = self.network_builder.build('amp', **config)
+        #!! changed
+        #! self.network_builder = -> learning.deepmm_network_builder.DeepmmBuilder -> by ModelA2CContinuousLogStd.init()
+        net = self.network_builder.build('deepmm', **config)
         for name, _ in net.named_parameters():
             print(name)
-        return ModelAMPContinuous.Network(net)
+        #! net => deemm_network_builder.build()로 인해, DeepmmBuilder.Network(self.params, **kwargs) 가 만들어짐.
+        return ModelDeepmmContinuous.Network(net)   #! initialize 하는 것
 
     class Network(ModelA2CContinuousLogStd.Network):
         def __init__(self, a2c_network):
+            #! a2c_network => DeepmmBuilder.Network
             super().__init__(a2c_network)
             return
 
         def forward(self, input_dict):
+
             is_train = input_dict.get('is_train', True)
+            #! 2. go to deepmm_network_builder.py Network.forward
             result = super().forward(input_dict)
 
+            #! 3. after going through 2. then do this => discriminator training
             if (is_train):
                 amp_obs = input_dict['amp_obs']
                 disc_agent_logit = self.a2c_network.eval_disc(amp_obs)
@@ -62,5 +69,6 @@ class ModelAMPContinuous(ModelA2CContinuousLogStd):
                 amp_demo_obs = input_dict['amp_obs_demo']
                 disc_demo_logit = self.a2c_network.eval_disc(amp_demo_obs)
                 result["disc_demo_logit"] = disc_demo_logit
-
+            
+            #! training시에는 go to deepmm_agent.py -> calc_gradients() -> res_dict = self.model(batch_dict)
             return result
