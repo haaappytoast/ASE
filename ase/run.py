@@ -51,6 +51,10 @@ from learning import amp_players
 from learning import amp_models
 from learning import amp_network_builder
 
+from learning import deepmimic_agent
+from learning import deepmimic_players
+from learning import deepmimic_models
+from learning import deepmimic_network_builder
 
 args = None
 cfg = None
@@ -171,7 +175,7 @@ class RLGPUEnv(vecenv.IVecEnv):
         info = {}
         info['action_space'] = self.env.action_space                        # VecTask() -> self.act_space -> spaces.Box
         info['observation_space'] = self.env.observation_space              # VecTask() -> self.obs_space -> spaces.Box
-        info['amp_observation_space'] = self.env.amp_observation_space
+        # info['amp_observation_space'] = self.env.amp_observation_space
 
         if self.use_global_obs:
             info['state_space'] = self.env.state_space
@@ -205,15 +209,10 @@ def build_alg_runner(algo_observer):
     runner.model_builder.model_factory.register_builder('amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network)) # ModelA2CContinuousLogStd 
     runner.model_builder.network_factory.register_builder('amp', lambda **kwargs : amp_network_builder.AMPBuilder())              # network_builder.A2CBuilder
     
-    # runner.algo_factory.register_builder('ase', lambda **kwargs : ase_agent.ASEAgent(**kwargs))
-    # runner.player_factory.register_builder('ase', lambda **kwargs : ase_players.ASEPlayer(**kwargs))
-    # runner.model_builder.model_factory.register_builder('ase', lambda network, **kwargs : ase_models.ModelASEContinuous(network))  
-    # runner.model_builder.network_factory.register_builder('ase', lambda **kwargs : ase_network_builder.ASEBuilder())
-    
-    # runner.algo_factory.register_builder('hrl', lambda **kwargs : hrl_agent.HRLAgent(**kwargs))
-    # runner.player_factory.register_builder('hrl', lambda **kwargs : hrl_players.HRLPlayer(**kwargs))
-    # runner.model_builder.model_factory.register_builder('hrl', lambda network, **kwargs : hrl_models.ModelHRLContinuous(network))  
-    # runner.model_builder.network_factory.register_builder('hrl', lambda **kwargs : hrl_network_builder.HRLBuilder())
+    runner.algo_factory.register_builder('deepmimic', lambda **kwargs : deepmimic_agent.DeepMimicAgent(**kwargs))
+    runner.player_factory.register_builder('deepmimic', lambda **kwargs : deepmimic_players.DeepMimicPlayerContinuous(**kwargs))
+    runner.model_builder.model_factory.register_builder('deepmimic', lambda network, **kwargs : deepmimic_models.ModelDeepMimicContinuous(network))
+    runner.model_builder.network_factory.register_builder('deepmimic', lambda **kwargs : deepmimic_network_builder.DeepMimicBuilder())   
     
     return runner
 
