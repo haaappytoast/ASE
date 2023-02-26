@@ -31,6 +31,7 @@ from env.tasks.humanoid_deepmm import HumanoidDeepmm
 
 from env.tasks.humanoid import Humanoid
 from env.tasks.humanoid_amp import HumanoidAMP
+from env.tasks.humanoid_deepmimic import HumanoidDeepMimic
 from env.tasks.humanoid_amp_getup import HumanoidAMPGetup
 from env.tasks.humanoid_heading import HumanoidHeading
 from env.tasks.humanoid_location import HumanoidLocation
