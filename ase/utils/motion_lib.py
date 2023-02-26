@@ -392,7 +392,11 @@ class DeepMimicMotionLib(MotionLib):
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
 
     def _calc_phase(self, motion_ids, motion_times):
+
         motion_len = self._motion_lengths[motion_ids]       
+        print(f"motion len dim : {motion_len.shape}")
+        print(f"motion ids dim : {motion_ids.shape}")
+        print(f"motion times dim : {motion_times.shape}")
         phase = motion_times/motion_len - motion_times // motion_len
         
         phase = torch.clip(phase, 0.0, 1.0)

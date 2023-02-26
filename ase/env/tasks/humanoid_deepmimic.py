@@ -1,5 +1,6 @@
 from enum import Enum
 import numpy as np
+import copy
 import torch
 
 from isaacgym import gymapi
@@ -69,6 +70,8 @@ class HumanoidDeepMimic(Humanoid):
     
     def post_physics_step(self):
         self.progress_buf+=1
+        # print(f"motion_times dim : {self._motion_times.shape}")
+        # print(f"progress_buf dim : {self.progress_buf.shape}")
         time_elapsed = self._motion_times + self.progress_buf * self.dt
         self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, 1)
         self._refresh_sim_tensors()
@@ -135,9 +138,10 @@ class HumanoidDeepMimic(Humanoid):
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
-        
+        print(f"env_ids dim : {env_ids.shape[0]}")
+        print(f"motion times dim : {motion_times.shape}")
         self._motion_ids = motion_ids
-        self._motion_times = motion_times
+        self._motion_times[env_ids] = motion_times
         self._phase[env_ids] = self._motion_lib._calc_phase(motion_ids, motion_times).view(num_envs, 1)
         return
     

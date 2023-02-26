@@ -53,6 +53,10 @@ class DeepMimicAgent(common_agent.CommonAgent):
 
     def init_tensors(self):
         super().init_tensors()
+        batch_shape = self.experience_buffer.obs_base_shape
+        self.experience_buffer.tensor_dict['rand_action_mask'] = torch.zeros(batch_shape, dtype=torch.float32, device=self.ppo_device)
+        self._build_rand_action_probs()
+        self.tensor_list += ['rand_action_mask']
         return
     
     def set_eval(self):
@@ -172,7 +176,6 @@ class DeepMimicAgent(common_agent.CommonAgent):
         det_action_mask = rand_action_mask == 0.0
         res_dict['actions'][det_action_mask] = res_dict['mus'][det_action_mask]
         res_dict['rand_action_mask'] = rand_action_mask
-
         return res_dict
 
     def train_epoch(self):
@@ -362,7 +365,12 @@ class DeepMimicAgent(common_agent.CommonAgent):
         self.train_result.update(c_info)
 
         return
-    
+
+    def _load_config_params(self, config):
+        super()._load_config_params(config)
+        self._enable_eps_greedy = bool(config['enable_eps_greedy'])
+        return 
+
     def _build_rand_action_probs(self):
         num_envs = self.vec_env.env.task.num_envs
         env_ids = to_torch(np.arange(num_envs), dtype=torch.float32, device=self.ppo_device)
