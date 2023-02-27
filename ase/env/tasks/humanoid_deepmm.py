@@ -83,11 +83,8 @@ class HumanoidDeepmm(Humanoid):
 
     def post_physics_step(self):
         self.progress_buf += 1
-        self._motion_times += self.progress_buf * self.dt
-        print("-"*10)
-        print("self._reset_env_ids: ", self._reset_env_ids)
-        print("motion_times[self._reset_env_ids]: ", self._motion_times[self._reset_env_ids])
-        print("motion_times: ", self._motion_times)
+        self.ones = torch.ones(self._motion_times.shape).to(self.device)
+        self._motion_times += self.ones * self.dt
         # self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, -1)
 
         self._refresh_sim_tensors()
@@ -126,7 +123,6 @@ class HumanoidDeepmm(Humanoid):
         super()._reset_envs(env_ids)
         #! compute reference observation
         if (len(env_ids)> 0):
-            print("**************init_ref_obs*************")
             self._init_ref_obs(env_ids)
         return
     
