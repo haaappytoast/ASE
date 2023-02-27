@@ -1,5 +1,5 @@
 import sys
-sys.path.append(r"/home/njh/project_deepmimic/jh_deepmimic/myDeepMimic/deepmimic")
+sys.path.append("~/deepmm_ws/ASE/")
 
 import numpy as np
 import os
@@ -11,7 +11,8 @@ from isaacgym.torch_utils import *
 import torch
 import yaml
 
-from testHumanoid import testHumanoid
+from env.tasks.testHumanoid import testHumanoid
+from env.tasks.humanoid_deepmimic import HumanoidDeepMimic
 
 SIM_TIMESTEP = 1.0 / 60.0
 

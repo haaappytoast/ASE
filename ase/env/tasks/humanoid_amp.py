@@ -28,10 +28,11 @@
 
 from enum import Enum
 import numpy as np
-import torch
 
 from isaacgym import gymapi
 from isaacgym import gymtorch
+
+import torch
 
 from env.tasks.humanoid import Humanoid, dof_to_obs
 from utils import gym_util
@@ -56,8 +57,8 @@ class HumanoidAMP(Humanoid):
         self._num_amp_obs_steps = cfg["env"]["numAMPObsSteps"]
         assert(self._num_amp_obs_steps >= 2)
 
-        self._reset_default_env_ids = []
-        self._reset_ref_env_ids = []
+        self._reset_default_env_ids = []    # StateInit으로 Default 썼을 때 사용
+        self._reset_ref_env_ids = []        # StateInit으로 Start, Random 사용
 
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
@@ -65,7 +66,6 @@ class HumanoidAMP(Humanoid):
                          device_type=device_type,
                          device_id=device_id,
                          headless=headless)
-
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
         # #! shape: torch.Size([1, 10, 125]
@@ -81,8 +81,8 @@ class HumanoidAMP(Humanoid):
         #! humanoid.py > obs = compute_humanoid_observations_max
         super().post_physics_step() #! comes here back when _compute_reward()
         
-        self._update_hist_amp_obs()
-        self._compute_amp_observations()
+        self._update_hist_amp_obs() # 과거 amp obs update 시켜주고
+        self._compute_amp_observations()    # 현재 amp obs update 시켜주기
 
         amp_obs_flat = self._amp_obs_buf.view(-1, self.get_num_amp_obs())
         self.extras["amp_obs"] = amp_obs_flat
@@ -170,15 +170,15 @@ class HumanoidAMP(Humanoid):
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
 
-        super()._reset_envs(env_ids)
-        self._init_amp_obs(env_ids)
+        super()._reset_envs(env_ids)    # reset_actors, reset_env_tensors, refresh_sim_tensors, _compute_observations
+        self._init_amp_obs(env_ids)     # 여기서 amp_obs minibatch size만큼 (10개) 저장해줌.
 
         return
 
     #! state 다시 initialize 해주는 코드!
     def _reset_actors(self, env_ids):
         if (self._state_init == HumanoidAMP.StateInit.Default):
-            self._reset_default(env_ids)
+            self._reset_default(env_ids)    # 항상 처음 humanoid.py에서 initialize 된 humanoid state 불러온다.
         elif (self._state_init == HumanoidAMP.StateInit.Start
               or self._state_init == HumanoidAMP.StateInit.Random):
             self._reset_ref_state_init(env_ids)
@@ -197,7 +197,7 @@ class HumanoidAMP(Humanoid):
 
     def _reset_ref_state_init(self, env_ids):
         num_envs = env_ids.shape[0]
-        motion_ids = self._motion_lib.sample_motions(num_envs)
+        motion_ids = self._motion_lib.sample_motions(num_envs)  #! num_envs 만큼 motion_id 생성
         
         if (self._state_init == HumanoidAMP.StateInit.Random
             or self._state_init == HumanoidAMP.StateInit.Hybrid):
@@ -206,6 +206,7 @@ class HumanoidAMP(Humanoid):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
+        #! "initial state" is sampled from the reference motion 
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
 
@@ -239,13 +240,14 @@ class HumanoidAMP(Humanoid):
         return
 
     def _init_amp_obs(self, env_ids):
-        #! 여기서 지금 현재 amp_observation 계산하고
+        #! 여기서 지금 현재 amp_observation 계산하고 curr_amp_obs_buf에 저장해줌
         self._compute_amp_observations(env_ids)
 
-        #! reference onb initialize 해주기
+        #! default initialization
         if (len(self._reset_default_env_ids) > 0):
             self._init_amp_obs_default(self._reset_default_env_ids)
 
+        #! random initialization
         if (len(self._reset_ref_env_ids) > 0):
             self._init_amp_obs_ref(self._reset_ref_env_ids, self._reset_ref_motion_ids,
                                    self._reset_ref_motion_times)
@@ -259,20 +261,23 @@ class HumanoidAMP(Humanoid):
 
     def _init_amp_obs_ref(self, env_ids, motion_ids, motion_times):
         dt = self.dt
-        motion_ids = torch.tile(motion_ids.unsqueeze(-1), [1, self._num_amp_obs_steps - 1])
-        motion_times = motion_times.unsqueeze(-1)
-        time_steps = -dt * (torch.arange(0, self._num_amp_obs_steps - 1, device=self.device) + 1)
-        motion_times = motion_times + time_steps
+        # motion_times: num_envs 
+        motion_ids = torch.tile(motion_ids.unsqueeze(-1), [1, self._num_amp_obs_steps - 1]) # shape: (NUM_ENVS, self._num_amp_obs_steps - 1)
+        motion_times = motion_times.unsqueeze(-1)                                           # shape: (NUM_ENVS, 1)
+
+        time_steps = -dt * (torch.arange(0, self._num_amp_obs_steps - 1, device=self.device) + 1)   # shape: [self._num_amp_obs_steps - 1]
+        motion_times = motion_times + time_steps                                                    # broadcast: [env_num, self._num_amp_obs_steps - 1]
 
         motion_ids = motion_ids.view(-1)
-        motion_times = motion_times.view(-1)
+        motion_times = motion_times.view(-1)                                                        # squeeze : (num_envs * self._num_amp_obs_steps - 1)
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
-               = self._motion_lib.get_motion_state(motion_ids, motion_times)
-        amp_obs_demo = build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel, 
+               = self._motion_lib.get_motion_state(motion_ids, motion_times)                        # motion_times_size, 맞는 개수
+
+        amp_obs_demo = build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel,           # 모든 motion_times_size에 맞게 obs 만든다!
                                               dof_pos, dof_vel, key_pos, 
                                               self._local_root_obs, self._root_height_obs, 
                                               self._dof_obs_size, self._dof_offsets)
-        self._hist_amp_obs_buf[env_ids] = amp_obs_demo.view(self._hist_amp_obs_buf[env_ids].shape)
+        self._hist_amp_obs_buf[env_ids] = amp_obs_demo.view(self._hist_amp_obs_buf[env_ids].shape)  # hist_amp_obs_buf에 넣어준다!
         return
     
     def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
@@ -287,8 +292,8 @@ class HumanoidAMP(Humanoid):
 
     def _update_hist_amp_obs(self, env_ids=None):
         if (env_ids is None):
-            for i in reversed(range(self._amp_obs_buf.shape[1] - 1)):
-                self._amp_obs_buf[:, i + 1] = self._amp_obs_buf[:, i]
+            for i in reversed(range(self._amp_obs_buf.shape[1] - 1)):   # self._amp_obs_buf.shape: [1, step_size, amp_obs_size]
+                self._amp_obs_buf[:, i + 1] = self._amp_obs_buf[:, i]   # step size만큼 (buf 0 ~ buf 9) 를 (buf 1 ~ 10)으로 옮겨준다. (history 만들기)
         else:
             for i in reversed(range(self._amp_obs_buf.shape[1] - 1)):
                 self._amp_obs_buf[env_ids, i + 1] = self._amp_obs_buf[env_ids, i]

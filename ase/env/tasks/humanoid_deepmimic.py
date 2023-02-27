@@ -1,13 +1,13 @@
 from enum import Enum
 import numpy as np
-import torch
 
 from isaacgym import gymapi
 from isaacgym import gymtorch
 
+import torch
 from env.tasks.humanoid import Humanoid
 from utils import gym_util
-from utils.motion_lib import MotionLib
+from utils.motion_lib import DeepMimicMotionLib
 from isaacgym.torch_utils import *
 
 from utils import torch_utils
@@ -87,7 +87,7 @@ class HumanoidDeepMimic(Humanoid):
     def _load_motion(self, motion_file):
         #! have to be changed
         assert(self._dof_offsets[-1] == self.num_dof)
-        self._motion_lib = MotionLib(motion_file=motion_file,
+        self._motion_lib = DeepMimicMotionLib(motion_file=motion_file,
                                      dof_body_ids=self._dof_body_ids,
                                      dof_offsets=self._dof_offsets,
                                      key_body_ids=self._key_body_ids.cpu().numpy(), 
@@ -116,7 +116,7 @@ class HumanoidDeepMimic(Humanoid):
 
     def _reset_ref_state_init(self, env_ids):
         num_envs = env_ids.shape[0]
-        motion_ids = self._motion_lib.sample_motions(num_envs)                                      #! get 
+        motion_ids = self._motion_lib.sample_motions(num_envs)
         
         if (self._state_init == HumanoidDeepMimic.StateInit.Random):
             motion_times = self._motion_lib.sample_time(motion_ids)
@@ -157,14 +157,16 @@ class HumanoidDeepMimic(Humanoid):
             body_rot = self._rigid_body_rot
             body_vel = self._rigid_body_vel
             body_ang_vel = self._rigid_body_ang_vel
+            phase = self._phase
         else:
             body_pos = self._rigid_body_pos[env_ids]
             body_rot = self._rigid_body_rot[env_ids]
             body_vel = self._rigid_body_vel[env_ids]
             body_ang_vel = self._rigid_body_ang_vel[env_ids]
-        
+            phase = self._phase[env_ids]
+            
         obs = build_deepmimic_observations(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
-                                                self._root_height_obs, self._phase)
+                                                self._root_height_obs, phase)
         return obs
 
     def _get_humanoid_ref_obs(self):
@@ -231,16 +233,22 @@ def build_deepmimic_observations(body_pos, body_rot, body_vel, body_ang_vel, loc
     
     # num_obs = 1 + (3 * 14) + (6 * 15) + (3 * 15) + (3 * 15) + 1  = 224
     base_obs = torch.cat((root_h_obs, local_body_pos, local_body_rot_obs, local_body_vel, local_body_ang_vel), dim=-1)
-    obs = torch.cat((base_obs, phase_obs), dim=-1)
     
+    phase_obs = torch.unsqueeze(phase_obs, -1).reshape((base_obs.shape[0], -1)) # (num_envs, 1)
+    
+    obs = torch.cat((base_obs, phase_obs), dim=-1)  # (num_env, 224)
     return obs
+
 @torch.jit.script
 def build_deepmimic_ref_observation(root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, local_root_obs, root_height_obs, phase):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> Tensor
-    pass
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> int
+    return 0
 
 @torch.jit.script
 def compute_humanoid_reward(obs_buf):
     # type: (Tensor) -> Tensor
+    pose_w = 0.5
+
+    
     reward = torch.ones_like(obs_buf[:, 0]) 
     return reward

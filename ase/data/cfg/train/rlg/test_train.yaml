@@ -1,4 +1,4 @@
-params:
+params: #! runner.default_config / (global) cfg_train
   seed: -1
 
   algo:
@@ -7,7 +7,7 @@ params:
   model:
     name: amp
 
-  network:
+  network: #! runner.network_builder load this params
     name: amp
     separate: True
 
@@ -42,7 +42,7 @@ params:
 
   load_checkpoint: False
 
-  config:
+  config: #! runner.config, with added model builer : (key, value) = (network, ModelBuilder) in this dictionary
     name: Humanoid
     env_name: rlgpu
     multi_gpu: False

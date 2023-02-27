@@ -62,7 +62,9 @@ class HumanoidDeepmm(Humanoid):
                          device_type=device_type,
                          device_id=device_id,
                          headless=headless)
-
+        # sim_params.dt = 1/60
+        # self._motion_dt = 1/30
+        
         #! set reference motion
         self._env_ids = torch.zeros(self.num_envs, device=self.device)
         self._motion_ids = torch.zeros(self.num_envs, device=self.device)

@@ -73,7 +73,7 @@ class Humanoid(BaseTask):
         
         # get gym GPU state tensors
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)   #! shape: (16, 13)   (self.num_envs * num_actors, actor_root_state (pos, rot, lin vel, ang vel)) 
-        dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)          #! shape: (496, 2) (num_env * dof, 2) -> position, velocity
+        dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)          #! shape: (496, 2) (num_env * num_dof, 2) -> position, velocity
         sensor_tensor = self.gym.acquire_force_sensor_tensor(self.sim)          #! shape: (32, 6) 6:  forces (3) and torques (3) 
         rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)   #! global rotation / shape: (num_rigid_bodies * num_envs, 13):  position([:, 0:3]), rotation([3:7]), linear velocity([7:10]), and angular velocity([10:13]
         contact_force_tensor = self.gym.acquire_net_contact_force_tensor(self.sim)  # shape: (272, 3)
@@ -93,8 +93,11 @@ class Humanoid(BaseTask):
 
         self._root_states = gymtorch.wrap_tensor(actor_root_state)  
         num_actors = self.get_num_actors_per_env()
-        
-        self._humanoid_root_states = self._root_states.view(self.num_envs, num_actors, actor_root_state.shape[-1])[..., 0, :]   # idx: 0 humanoid 
+
+        # torch.view: 반환되는 tensor는 원본 tensor와 기반이 되는 data를 공유한다.
+        # print(self._humanoid_root_states.data_ptr())
+        # print(self._root_states.data_ptr())
+        self._humanoid_root_states = self._root_states.view(self.num_envs, num_actors, actor_root_state.shape[-1])[..., 0, :]   # idx: 0 humanoid
         self._initial_humanoid_root_states = self._humanoid_root_states.clone()
         self._initial_humanoid_root_states[:, 7:13] = 0 #! why?
 
@@ -110,17 +113,18 @@ class Humanoid(BaseTask):
         self._initial_dof_vel = torch.zeros_like(self._dof_vel, device=self.device, dtype=torch.float)  #! <- initial dof vel 0으로 저장
         
         self._rigid_body_state = gymtorch.wrap_tensor(rigid_body_state) #! <- shape: (272, 13)
-
+        print("humanoid: ", self._rigid_body_state.data_ptr())
         # print("actor_root_state: ", self._root_states[:, 0:3])
         # print("rigid_body_state: ", self._rigid_body_state[[0, 15, 30, 45, 60, 75], 0:3])
 
         bodies_per_env = self._rigid_body_state.shape[0] // self.num_envs
         rigid_body_state_reshaped = self._rigid_body_state.view(self.num_envs, bodies_per_env, 13)  #! <- (1, 272, 13)
 
-        self._rigid_body_pos = rigid_body_state_reshaped[..., :self.num_bodies, 0:3]        # torch.Size([1, 15, 3])    # 15: humanoid, 17: with sword
-        self._rigid_body_rot = rigid_body_state_reshaped[..., :self.num_bodies, 3:7]        # torch.Size([1, 15, 3])
-        self._rigid_body_vel = rigid_body_state_reshaped[..., :self.num_bodies, 7:10]       # torch.Size([1, 15, 3])
-        self._rigid_body_ang_vel = rigid_body_state_reshaped[..., :self.num_bodies, 10:13]  # torch.Size([1, 15, 3])
+        # _rigid_body_pos/rot/vel/ang_vel share same data_prt with self._rigid_body_state & self.rigid_body_state_reshaped
+        self._rigid_body_pos = rigid_body_state_reshaped[..., :self.num_bodies, 0:3]            # torch.Size([1, 15, 3])    # 15: humanoid, 17: with sword
+        self._rigid_body_rot = rigid_body_state_reshaped[..., :self.num_bodies, 3:7]            # torch.Size([1, 15, 3])
+        self._rigid_body_vel = rigid_body_state_reshaped[..., :self.num_bodies, 7:10]           # torch.Size([1, 15, 3])
+        self._rigid_body_ang_vel = rigid_body_state_reshaped[..., :self.num_bodies, 10:13]      # torch.Size([1, 15, 3])
 
         contact_force_tensor = gymtorch.wrap_tensor(contact_force_tensor)
         self._contact_forces = contact_force_tensor.view(self.num_envs, bodies_per_env, 3)[..., :self.num_bodies, :]
@@ -176,10 +180,9 @@ class Humanoid(BaseTask):
     def _reset_envs(self, env_ids):
         if (len(env_ids) > 0):
             #! humanoid_deepmm에 Initialization Strategy에 따라 ref state 다시 initialize 해주는 코드!
+            #! ref state buffer + humanoid를 모두 initialize 해주는 코드!
+            self._reset_actors(env_ids) #! go to humanoid_*._reset_actors()
             #! reset_env also
-            
-            self._reset_actors(env_ids)
-            #! ref state buffer를 initialize 해주는 코드!
             self._reset_env_tensors(env_ids)
             self._refresh_sim_tensors()
             #! compute humanoid state -> 이걸로 그냥 실행 / humanoid_amp_task는 task obs랑 concat해줌
@@ -454,6 +457,7 @@ class Humanoid(BaseTask):
     #! deepmm에 overriding됨
     def _reset_actors(self, env_ids):
         self._humanoid_root_states[env_ids] = self._initial_humanoid_root_states[env_ids]
+
         self._dof_pos[env_ids] = self._initial_dof_pos[env_ids]
         self._dof_vel[env_ids] = self._initial_dof_vel[env_ids]
         return
@@ -643,13 +647,12 @@ def compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel
     root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
     root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
     root_h = root_pos[:, 2:3]       # get z-value
-    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)
     if (not root_height_obs):
         root_h_obs = torch.zeros_like(root_h)
     else:
         root_h_obs = root_h
     
-    #? local_body_pos 이해 안감
     heading_rot_expand = heading_rot.unsqueeze(-2)
     heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
     flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
@@ -658,12 +661,12 @@ def compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel
     root_pos_expand = root_pos.unsqueeze(-2)            # shape: [1, 1, 3]
     local_body_pos = body_pos - root_pos_expand         #! root_relative_position / shape: [1, 15, 3] / 15: num_body
     flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])    # shrink shape: [15, 3]/ 15: num_body
-    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! local에서 바라본 root_relative_position of link / shape: [1, 15, 3]
+    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! root의 local x-axis에서 바라본 root_relative_position of link / shape: [1, 15, 3]
     local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])    # [1, 15 * 3]
     local_body_pos = local_body_pos[..., 3:] # remove root pos
 
     flat_body_rot = body_rot.reshape(body_rot.shape[0] * body_rot.shape[1], body_rot.shape[2])  # shape: [15, 4]
-    flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [15,4]
+    flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [15, 4]
     flat_local_body_rot_obs = torch_utils.quat_to_tan_norm(flat_local_body_rot) # shape: [15, 6]
     local_body_rot_obs = flat_local_body_rot_obs.reshape(body_rot.shape[0], body_rot.shape[1] * flat_local_body_rot_obs.shape[1])   #shape: [1, 15 * 6]
     

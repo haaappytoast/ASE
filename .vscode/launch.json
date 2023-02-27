@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${fileDirname}",
+            "args": ["--task", "testHumanoid", "--cfg_env", "~/deepmm_ws/ASE/ase/data/cfg/test.yaml",
+            "--cfg_train", "~/deepmm_ws/ASE/ase/data/cfg/train/rlg/test_train.yaml", "--motion_file", 
+            "~/deepmm_ws/ASE/ase/data/motions/reallusion_sword_shield/RL_Avatar_Atk_2xCombo01_Motion.npy", "--headless"
+            ]
+        }
+    ]
+}
