@@ -55,6 +55,9 @@ class HumanoidDeepmm(Humanoid):
         self._state_init = HumanoidDeepmm.StateInit[state_init]
 
         self._usePhase = True
+
+        self._reset_default_env_ids = []
+        self._reset_ref_env_ids = []
         
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
@@ -65,28 +68,33 @@ class HumanoidDeepmm(Humanoid):
 
         #! set reference motion
         self._env_ids = torch.zeros(self.num_envs, device=self.device)
-        self._motion_ids = torch.zeros(self.num_envs, device=self.device)
+        self._motion_ids = torch.zeros(self.num_envs, device=self.device, dtype=torch.int64)
         self._motion_times = torch.zeros(self.num_envs, device=self.device)
         self._phase = torch.zeros(self.num_envs, device=self.device)
 
         self.num_ref_obs = 117
         self.ref_buf = torch.zeros((self.num_envs, self.num_ref_obs), device=self.device, dtype=torch.float)
-
+        
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
 
+        self.temp = 0
         return
 
     def post_physics_step(self):
         self.progress_buf += 1
-        time_elapsed = self._motion_times + self.progress_buf * self.dt
-        self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, -1)
+        self._motion_times += self.progress_buf * self.dt
+        print("-"*10)
+        print("self._reset_env_ids: ", self._reset_env_ids)
+        print("motion_times[self._reset_env_ids]: ", self._motion_times[self._reset_env_ids])
+        print("motion_times: ", self._motion_times)
+        # self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, -1)
 
         self._refresh_sim_tensors()
-        self._compute_observations(env_ids=None)
+        self._compute_observations()
 
-        #! compute reference observation
-        self._compute_ref_observations(env_ids=None)
+        #! compute reference observation                
+        self._compute_ref_observations()
 
         self._compute_reward(self.actions)
         self._compute_reset()
@@ -109,19 +117,26 @@ class HumanoidDeepmm(Humanoid):
                                      device=self.device)
         return
     
+    # humanoid.py의 self.reset에서 실행이 되는데 이 때, env_ids를 tensor로 바꿔주는 코드가 들어있음
     def _reset_envs(self, env_ids):
-        if (len(env_ids) > 0):
-            #! humanoid_deepmm에 Initialization Strategy에 따라 ref state + humanoid state 다시 initialize 해주는 코드!
-            self._reset_actors(env_ids) #! go to humanoid_*._reset_actors()
-            #! reset_env also
-            self._reset_env_tensors(env_ids)
-            self._refresh_sim_tensors()
-            #! compute humanoid state -> 이걸로 그냥 실행
-            self._compute_observations(env_ids=None)
-
-            #! compute reference observation
-            self._compute_ref_observations(env_ids=None)
+        self._reset_default_env_ids = []
+        self._reset_ref_env_ids = []
+        
+        # done_indices가 있는 것!
+        super()._reset_envs(env_ids)
+        #! compute reference observation
+        if (len(env_ids)> 0):
+            print("**************init_ref_obs*************")
+            self._init_ref_obs(env_ids)
         return
+    
+    def _reset_env_tensors(self, env_ids):
+        super()._reset_env_tensors(env_ids)
+        
+    def _init_ref_obs(self, env_ids):
+        self._compute_ref_observations(env_ids) # env_ids에 대하여 observation 구해주고
+        return
+
     
     def _setup_character_props(self, key_bodies):
         asset_file = self.cfg["env"]["asset"]["assetFileName"]
@@ -147,13 +162,15 @@ class HumanoidDeepmm(Humanoid):
             assert(False)
 
         return
+    
     def _compute_ref_observations(self, env_ids=None):
         ref_obs = self._compute_ref_obs(env_ids)
-
         if (env_ids is None):
             self.ref_buf[:] = ref_obs
         else:
             self.ref_buf[env_ids] = ref_obs
+
+        
         return
     
     #! state 다시 initialize 해주는 코드!
@@ -178,7 +195,7 @@ class HumanoidDeepmm(Humanoid):
     def _reset_ref_state_init(self, env_ids):
         num_envs = env_ids.shape[0]
         motion_ids = self._motion_lib.sample_motions(num_envs)
-        
+                
         if (self._state_init == HumanoidDeepmm.StateInit.Random):
             motion_times = self._motion_lib.sample_time(motion_ids)
         elif (self._state_init == HumanoidDeepmm.StateInit.Start):
@@ -199,10 +216,14 @@ class HumanoidDeepmm(Humanoid):
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
         
-        self._env_ids = env_ids
-        self._motion_ids = motion_ids
-        self._motion_times = motion_times
+        self._reset_env_ids = env_ids
+        self._reset_ref_motion_ids = motion_ids
+        self._reset_ref_motion_times = motion_times
 
+        if (env_ids is None):        # 환경 1개 일때
+            self._motion_times[:] = motion_times
+        else:                        # 환경 여러 개일 때
+            self._motion_times[env_ids] = motion_times
         return
 
     def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
@@ -232,15 +253,23 @@ class HumanoidDeepmm(Humanoid):
                                                 self._root_height_obs)
         return obs
 
+    # 여기서 motion_times랑 motion_ids reset된 걸로 해야되는건가? -> 확인해보기
     def _compute_ref_obs(self, env_ids=None):
+        # env가 하나만 있을 때 or post_physics_step에서 compute_ref_observation() 불렀을때
         if (env_ids is None):
             local_body_rot, local_body_angvel, global_ee_pos \
                 = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
-        
-        #! check with env_ids
+        # num_envs가 여러개 있을 때
         else:
-            local_body_rot, local_body_angvel, global_ee_pos \
-                = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
+            # reset할 게 있다면, 
+            if (self._reset_ref_motion_ids.shape[0] != self.num_envs):
+                local_body_rot, local_body_angvel, global_ee_pos \
+                    = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
+            # reset이 아니라면 
+            else:
+                local_body_rot, local_body_angvel, global_ee_pos \
+                    = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
+
         flat_local_body_rot = local_body_rot.reshape(local_body_rot.shape[0], local_body_rot.shape[1] * local_body_rot.shape[2])                # [num_envs, 15 * 4]
         flat_local_body_angvel = local_body_angvel.reshape(local_body_angvel.size(0), local_body_angvel.size(1) * local_body_angvel.size(2))  #! 확인 필요  # [num_envs, 15 * 3]
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
