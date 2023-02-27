@@ -235,9 +235,9 @@ def build_deepmimic_observations(body_pos, body_rot, body_vel, body_ang_vel, loc
     
     return obs
 @torch.jit.script
-def build_deepmimic_ref_observation(root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, local_root_obs, root_height_obs, phase):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> Tensor
-    pass
+# def build_deepmimic_ref_observation(root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, local_root_obs, root_height_obs, phase):
+#     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> Tensor
+#     pass
 
 @torch.jit.script
 def compute_humanoid_reward(obs_buf):
