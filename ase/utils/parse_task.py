@@ -28,7 +28,7 @@
 
 #!! should be always changed
 from env.tasks.humanoid_deepmm import HumanoidDeepmm
-from env.tasks.humanoid_deepmimic import HumanoidDeepMimic
+# from env.tasks.humanoid_deepmimic import HumanoidDeepMimic
 from env.tasks.humanoid_view_motions import HumanoidViewMotions
 
 from env.tasks.humanoid import Humanoid
