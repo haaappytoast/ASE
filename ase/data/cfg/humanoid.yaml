@@ -1,6 +1,6 @@
 # if given, will override the device setting in gym. 
 env: 
-  numEnvs: 32 
+  numEnvs: 64
   envSpacing: 5
   episodeLength: 300
   isFlagrun: False
