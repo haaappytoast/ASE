@@ -85,10 +85,10 @@ class HumanoidDeepmm(Humanoid):
         self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, -1)
 
         self._refresh_sim_tensors()
-        self._compute_observations(env_ids=None)
+        self._compute_observations()
 
         #! compute reference observation
-        self._compute_ref_observations(env_ids=None)
+        self._compute_ref_observations()
 
         self._compute_reward(self.actions)
         self._compute_reset()
@@ -119,10 +119,10 @@ class HumanoidDeepmm(Humanoid):
             self._reset_env_tensors(env_ids)
             self._refresh_sim_tensors()
             #! compute humanoid state -> 이걸로 그냥 실행
-            self._compute_observations(env_ids=None)
+            self._compute_observations(env_ids)
 
             #! compute reference observation
-            self._compute_ref_observations(env_ids=None)
+            self._compute_ref_observations(env_ids)
         return
     
     def _setup_character_props(self, key_bodies):
