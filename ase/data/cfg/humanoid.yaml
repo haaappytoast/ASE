@@ -1,7 +1,7 @@
 # if given, will override the device setting in gym. 
 env: 
-  numEnvs: 64
-  envSpacing: 5
+  numEnvs: 2
+  envSpacing: 2
   episodeLength: 300
   isFlagrun: False
   enableDebugVis: False
@@ -23,7 +23,7 @@ env:
   asset:
     assetRoot: "ase/data/assets"
     assetFileName: "mjcf/amp_humanoid.xml"
-
+    kinAssetFileName: "mjcf/kin_humanoid.xml"
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0

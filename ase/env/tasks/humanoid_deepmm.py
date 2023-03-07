@@ -45,7 +45,6 @@ from poselib.poselib.core import *
 
 class HumanoidDeepmm(Humanoid):
     class StateInit(Enum):
-        Default = 0
         Start = 1
         Random = 2
 
@@ -172,20 +171,11 @@ class HumanoidDeepmm(Humanoid):
     #! state 다시 initialize 해주는 코드!
     def _reset_actors(self, env_ids):
         #!!  should be always changed (HumanoidAmp -> HumanoidDeepmm)
-        if (self._state_init == HumanoidDeepmm.StateInit.Default):
-            self._reset_default(env_ids)
-        elif (self._state_init == HumanoidDeepmm.StateInit.Start
+        if (self._state_init == HumanoidDeepmm.StateInit.Start
               or self._state_init == HumanoidDeepmm.StateInit.Random):
             self._reset_ref_state_init(env_ids)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
-        return
-    
-    def _reset_default(self, env_ids):
-        self._humanoid_root_states[env_ids] = self._initial_humanoid_root_states[env_ids]
-        self._dof_pos[env_ids] = self._initial_dof_pos[env_ids]
-        self._dof_vel[env_ids] = self._initial_dof_vel[env_ids]
-        self._reset_default_env_ids = env_ids
         return
 
     def _reset_ref_state_init(self, env_ids):

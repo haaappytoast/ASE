@@ -124,8 +124,9 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.obs = self.env_reset()
         self.curr_frames = self.batch_size_envs
         
-        model_output_file = os.path.join(self.nn_dir, self.config['name'])
-        
+        name = self.config['name'] + "_" + datetime.now().strftime("%b:%d:%H:%M")
+        # model_output_file = os.path.join(self.nn_dir, self.config['name'])
+        model_output_file = os.path.join(self.nn_dir, name)
         if self.multi_gpu:
             self.hvd.setup_algo(self)
 
