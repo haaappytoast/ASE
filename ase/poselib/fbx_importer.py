@@ -34,17 +34,35 @@ from poselib.skeleton.skeleton3d import SkeletonTree, SkeletonState, SkeletonMot
 from poselib.visualization.common import plot_skeleton_state, plot_skeleton_motion_interactive
 
 # source fbx file path
-fbx_file = "data/01_01_cmu.fbx"
+# fbx_file = "data/01_01_cmu.fbx"
+fbx_file = "data/ybot_walking.fbx"
 
 # import fbx file - make sure to provide a valid joint name for root_joint
-motion = SkeletonMotion.from_fbx(
-    fbx_file_path=fbx_file,
-    root_joint="Hips",
-    fps=60
+# motion = SkeletonMotion.from_fbx(
+#     fbx_file_path=fbx_file,
+#     root_joint="mixamorig:Hips",
+#     # fps=60
+#     fps=30
+# )
+
+# import npy file
+import numpy as np
+path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
+npy_file = "concat_humanoid_walk.npy"
+
+# path = "/home/vml/deepmm_ws/isaac_ws/isaac_example/ASE/ase/data/motions/"
+# npy_file = "amp_humanoid_walk.npy"
+
+motion_dict = np.load(path + npy_file, allow_pickle=True).item()
+
+npy_motion = SkeletonMotion.from_dict(
+    dict_repr=motion_dict
 )
 
-# save motion in npy format
-motion.to_file("data/01_01_cmu.npy")
+
+# # save motion in npy format
+# motion.to_file("data/ybot_walking.npy")
 
 # visualize motion
-plot_skeleton_motion_interactive(motion)
+# plot_skeleton_motion_interactive(motion)
+plot_skeleton_motion_interactive(npy_motion)
