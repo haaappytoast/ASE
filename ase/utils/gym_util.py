@@ -32,6 +32,7 @@ import numpy as np
 import torch
 from isaacgym.torch_utils import *
 from isaacgym import gymtorch
+from isaacgym.torch_utils import quat_from_euler_xyz
 
 def setup_gym_viewer(config):
     gym = initialize_gym(config)

@@ -1,12 +1,17 @@
+# runner.load()의 self.default_config
 params:
   seed: -1
 
+# self.algo_params
   algo:
     name: deepmimic
-
+    
+# self.model_name
   model:
     name: deepmimic
 
+  # Model_builder의 self.network_name
+  # DeepmmBuilder.Network.load()의 params
   network:
     name: deepmimic
     separate: True
@@ -33,11 +38,22 @@ params:
       regularizer:
         name: None
 
+    disc:
+      units: [1024, 512]
+      activation: relu
+
+      initializer:
+        name: default
+
+# self.load_check_point
   load_checkpoint: False
 
+# runner의 self.config
+# agent의 config
   config:
-    name: HumanoidDeepMimic
-    env_name: rlgpu
+  # CommenAgent의 init함수에서, net_config = 'actions_num', 'input_shape', 'num_seqs' 'value_size' 지정해줌
+    name: Humanoid
+    env_name: mimic # env for deepmimic
     multi_gpu: False
     ppo: True
     mixed_precision: False
@@ -61,10 +77,24 @@ params:
     ppo: True
     e_clip: 0.2
     horizon_length: 32
-    minibatch_size: 16384
+    minibatch_size: 8
     mini_epochs: 6
     critic_coef: 5
     clip_value: False
     seq_len: 4
     bounds_loss_coef: 10
+    #amp_obs_demo_buffer_size: 20000
+    #amp_replay_buffer_size: 20000
+    #amp_replay_keep_prob: 0.01
+    #amp_batch_size: 4
+    #amp_minibatch_size: 4
+    #disc_coef: 5
+    #disc_logit_reg: 0.01
+    #disc_grad_penalty: 5
+    #disc_reward_scale: 2
+    #disc_weight_decay: 0.0001
+    #normalize_amp_input: True
     enable_eps_greedy: False
+
+    task_reward_w: 1.0
+    #disc_reward_w: 1.0

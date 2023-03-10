@@ -30,7 +30,7 @@ import numpy as np
 import os
 import yaml
 
-from poselib.poselib.skeleton.skeleton3d import SkeletonMotion
+from poselib.poselib.skeleton.skeleton3d import SkeletonMotion, SkeletonState
 from poselib.poselib.core.rotation3d import *
 from isaacgym.torch_utils import *
 
@@ -101,13 +101,14 @@ class MotionLib():
 
         #! skeleton3d.py > SkeletonMotion
         motions = self._motions
-        self.gts = torch.cat([m.global_translation for m in motions], dim=0).float()
-        self.grs = torch.cat([m.global_rotation for m in motions], dim=0).float()
-        self.lrs = torch.cat([m.local_rotation for m in motions], dim=0).float()        #! body local rotation: torch.Size([40, 15, 4])
-        self.grvs = torch.cat([m.global_root_velocity for m in motions], dim=0).float()
-        self.gravs = torch.cat([m.global_root_angular_velocity for m in motions], dim=0).float()
-        #! from _compute_motion_dof_vels
-        self.dvs = torch.cat([m.dof_vels for m in motions], dim=0).float()  # local dof joint velocity
+        self.gts = torch.cat([m.global_translation for m in motions], dim=0).float()                # global translation:           [num_frames, num_rigid_bodies, 3]
+        self.grs = torch.cat([m.global_rotation for m in motions], dim=0).float()                   # global rotation:              [num_frames, num_rigid_bodies, 4]
+        self.lrs = torch.cat([m.local_rotation for m in motions], dim=0).float()                    # body local rotation:          [num_frames, num_rigid_bodies, 4]
+        self.grvs = torch.cat([m.global_root_velocity for m in motions], dim=0).float()             # global root velocity:         [num_frames, 3]
+        self.gravs = torch.cat([m.global_root_angular_velocity for m in motions], dim=0).float()    # global_root_angular_velocity: [num_frames, 4]
+        #! from _compute_motion_dof_vels (local_angular_velocity from difference b/w local_rots)
+        self.dvs = torch.cat([m.dof_vels for m in motions], dim=0).float()  # local dof joint velocity  # local_angular_velocity
+
         lengths = self._motion_num_frames
         lengths_shifted = lengths.roll(1)
         lengths_shifted[0] = 0
@@ -160,6 +161,11 @@ class MotionLib():
 
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
 
+        # frame_idx0 = torch.tensor([0]).to(device=0)
+        # frame_idx1 = torch.tensor([0]).to(device=0)
+        # blend = torch.Tensor([0.0]).to(device=0)
+        # print("after // frame_idx0", frame_idx0.item(),", frame_idx1: ", frame_idx1.item(), ",blend: ", blend.item())
+        
         f0l = frame_idx0 + self.length_starts[motion_ids]
         f1l = frame_idx1 + self.length_starts[motion_ids]
 
@@ -168,7 +174,7 @@ class MotionLib():
 
         root_rot0 = self.grs[f0l, 0]
         root_rot1 = self.grs[f1l, 0]
-
+        
         local_rot0 = self.lrs[f0l]
         local_rot1 = self.lrs[f1l]
 
@@ -218,7 +224,6 @@ class MotionLib():
             curr_file = motion_files[f]
             print("Loading {:d}/{:d} motion files: {:s}".format(f + 1, num_motion_files, curr_file))
             curr_motion = SkeletonMotion.from_file(curr_file)
-
             motion_fps = curr_motion.fps
             curr_dt = 1.0 / motion_fps
 
@@ -298,6 +303,9 @@ class MotionLib():
         frame_idx1 = torch.min(frame_idx0 + 1, num_frames - 1)
         blend = (time - frame_idx0 * dt) / dt
 
+        # print("time: ", time.item())
+        # print("before // frame_idx0", frame_idx0.item(),", frame_idx1: ", frame_idx1.item(), ",blend: ", blend.item())
+
         return frame_idx0, frame_idx1, blend
 
     def _get_num_bodies(self):
@@ -311,7 +319,7 @@ class MotionLib():
         dof_vels = []
 
         for f in range(num_frames - 1):
-            local_rot0 = motion.local_rotation[f]   #? [15, 4] for humanoid -> rigid body에 대한 건가?
+            local_rot0 = motion.local_rotation[f]   #? [15, 4] for humanoid -> yes
             local_rot1 = motion.local_rotation[f + 1]
             frame_dof_vel = self._local_rotation_to_dof_vel(local_rot0, local_rot1, dt)
             frame_dof_vel = frame_dof_vel
@@ -335,8 +343,8 @@ class MotionLib():
             joint_size = dof_offsets[j + 1] - joint_offset
 
             if (joint_size == 3):
-                joint_q = local_rot[:, body_id] #! body의 local rot에서 해당하는 joint의 local rot 가져오기
-                joint_exp_map = torch_utils.quat_to_exp_map(joint_q)
+                joint_q = local_rot[:, body_id]                         # body의 local rot에서 해당하는 joint의 local rot 가져오기 / size: [1, 4]
+                joint_exp_map = torch_utils.quat_to_exp_map(joint_q)    
                 dof_pos[:, joint_offset:(joint_offset + joint_size)] = joint_exp_map
             elif (joint_size == 1):
                 joint_q = local_rot[:, body_id]
@@ -392,11 +400,7 @@ class DeepMimicMotionLib(MotionLib):
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
 
     def _calc_phase(self, motion_ids, motion_times):
-
         motion_len = self._motion_lengths[motion_ids]       
-        print(f"motion len dim : {motion_len.shape}")
-        print(f"motion ids dim : {motion_ids.shape}")
-        print(f"motion times dim : {motion_times.shape}")
         phase = motion_times/motion_len - motion_times // motion_len
         
         phase = torch.clip(phase, 0.0, 1.0)
@@ -405,11 +409,11 @@ class DeepMimicMotionLib(MotionLib):
     
     def get_motion_body_state(self, motion_ids, motion_times):
         # return global body orn(Quat), body ang vel
-        motion_len = self._motion_lengths[motion_ids]       # sec, shape : (1, num_envs)
-        num_frames = self._motion_num_frames[motion_ids]    # frame, shape : (1, num_envs)
-        dt = self._motion_dt[motion_ids]                    # sec, shape : (1, num_envs)
+        motion_len = self._motion_lengths[motion_ids]       # sec, shape:      (1, num_envs)
+        num_frames = self._motion_num_frames[motion_ids]    # frame, shape:    (1, num_envs)
+        dt = self._motion_dt[motion_ids]                    # sec, shape:      (1, num_envs)
 
-        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)    # shape : (1, num_envs)
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)    # shape: (1, num_envs)
 
         f0l = frame_idx0 + self.length_starts[motion_ids]
         f1l = frame_idx1 + self.length_starts[motion_ids]
@@ -423,3 +427,153 @@ class DeepMimicMotionLib(MotionLib):
         
 
         return body_orn, body_ang_vel
+    
+    def _get_body_global_quat(self, motion_ids, motion_times):
+
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+        
+        global_quat0 = self.grs[f0l]
+        global_quat1 = self.grs[f1l]
+
+        vals = [global_quat0]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+        blend = blend.unsqueeze(-1)
+
+        blended_global_quat = torch_utils.slerp(global_quat0, global_quat1, blend)
+
+        return blended_global_quat
+
+    def _get_body_local_quat(self, motion_ids, motion_times):
+
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+        
+        local_rot0 = self.lrs[f0l]
+        local_rot1 = self.lrs[f1l]
+
+        vals = [local_rot0, local_rot1]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+        blend = blend.unsqueeze(-1)
+
+        if (blend.shape[0] > 1):
+            blend = blend.unsqueeze(-2)
+            blend = blend.repeat((1, local_rot0.shape[1], 1))   # shape: [2, 15, 1]
+
+        blended_local_rot = torch_utils.slerp(local_rot0, local_rot1, blend)
+
+        return blended_local_rot    # [1, num_bodies, 4]
+    
+    def _get_jnt_local_angvel(self, motion_ids, motion_times):
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        
+        dof_vel = self.dvs[f0l]
+
+        return dof_vel    # [1, num_dof]
+    
+    def _get_body_local_angvel(self, motion_ids, motion_times):
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+
+        # root 관련 정보
+        root_rot0 = self.grs[f0l, 0]
+        root_rot1 = self.grs[f1l, 0]
+
+        # global body angular velocity 관련 정보 
+        body_global_ang_vel0 = self.gavs[f0l]
+        body_global_ang_vel1 = self.gavs[f1l]
+
+        vals = [root_rot0, root_rot1, body_global_ang_vel0, body_global_ang_vel1]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+        blend = blend.unsqueeze(-1)
+
+        if (blend.shape[0] > 1):
+            blend_expand = blend.unsqueeze(-2)
+            blend_expand = blend_expand.repeat((1, body_global_ang_vel0.shape[1], 1))   # shape: [2, 15, 1]
+            body_glob_ang_vel = torch_utils.slerp(body_global_ang_vel0, body_global_ang_vel1, blend_expand)   # [2, 15, 3]
+        else:
+            body_glob_ang_vel = torch_utils.slerp(body_global_ang_vel0, body_global_ang_vel1, blend)   # [1, 15, 3]
+
+        # root blending
+        root_rot = torch_utils.slerp(root_rot0, root_rot1, blend)
+        # global body angular velocity blending
+        flat_body_ang_vel = body_glob_ang_vel.reshape(body_glob_ang_vel.shape[0] * body_glob_ang_vel.shape[1], 
+                                                            body_glob_ang_vel.shape[2])                         # [num_env * rigid_body_size, 3]
+        
+
+        # heading_rot 구하기
+        heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)   [num_envs, 4]
+        heading_rot_expand = heading_rot.unsqueeze(-2)              # [1, 1, 4]
+        heading_rot_expand = heading_rot_expand.repeat((1, body_glob_ang_vel.shape[1], 1))      # [1, 15, 4]
+        flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                                        heading_rot_expand.shape[2])
+        
+        # calculate local body angular velocity
+        local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel) #! local(root coordinate)에서 바라본 body rot / shape: [15 * num_envs, 4]
+        local_body_ang_vel = local_body_ang_vel.reshape(heading_rot.shape[0], -1, local_body_ang_vel.shape[-1])
+
+        return local_body_ang_vel    # [num_envs, 15, 3]
+        
+    def _get_ee_world_position(self, motion_ids, motion_times):
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+        
+        key_pos0 = self.gts[f0l.unsqueeze(-1), self._key_body_ids.unsqueeze(0)]
+        key_pos1 = self.gts[f1l.unsqueeze(-1), self._key_body_ids.unsqueeze(0)]
+
+        vals = [key_pos0, key_pos1]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+        blend_exp = blend.unsqueeze(-1)
+        if (blend.shape[0] > 1):
+            blend_exp_expand = blend_exp.unsqueeze(-1)
+            key_pos = (1.0 - blend_exp_expand) * key_pos0 + blend_exp_expand * key_pos1
+        else:
+            key_pos = (1.0 - blend_exp) * key_pos0 + blend_exp * key_pos1
+        
+        return key_pos # [1, num_key_bodies, 3]
+
+    def get_motion_state_for_reference(self, motion_ids, motion_times):
+        local_body_rot = self._get_body_local_quat(motion_ids, motion_times)
+        local_body_angvel = self._get_body_local_angvel(motion_ids, motion_times)
+        global_ee_pos = self._get_ee_world_position(motion_ids, motion_times)
+        return local_body_rot, local_body_angvel, global_ee_pos
+    
+

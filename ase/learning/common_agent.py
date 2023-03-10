@@ -63,7 +63,15 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.clip_actions = config.get('clip_actions', True)                    #! action clipping option (default : True) 
         self._save_intermediate = config.get('save_intermediate', False)        #! save intermediate model boolean
 
-        net_config = self._build_net_config()                                   #! network params
+        net_config = self._build_net_config()
+
+        #! self.network = -> learning.amp_models.ModelAMPContinuous (a2c_common.py 에서 지정해줌)
+        #! 여기선 self.model = -> 이 network는 ModelDeepmmContinuous.Network(net) initialize해주는 것인데
+        #! 그 안에 ModelDeepmmContinuous의 net를 빌드해주는 건 DeepmmBuilder.Network(self.params, **kwargs)
+        # net_config = 'actions_num', 'input_shape', 'num_seqs' 'value_size' 지정해줌
+        self.model = self.network.build(net_config)
+        self.model.to(self.ppo_device)
+        self.states = None
 
         #! self.network = -> learning.amp_models.ModelAMPContinuous (a2c_common.py 에서 지정해줌)
         #! 여기선 self.model = -> 이 network는 ModelDeepmmContinuous.Network(net) initialize해주는 것인데
@@ -115,26 +123,28 @@ class CommonAgent(a2c_continuous.A2CAgent):
         return
 
     def train(self):
-        self.init_tensors()                                                     #! call amp_agent.init_tensors()
-        self.last_mean_rewards = -100500                                        #! set last mean reward(recent)
-        start_time = time.time()                                                #! set starting time
-        total_time = 0                                                          #! declare for storing total time
-        rep_count = 0                                                           #! count
-        self.frame = 0                                                          #! frame number
-        self.obs = self.env_reset()                                             #! env reset and get observation
-        self.curr_frames = self.batch_size_envs                                 #! set curr_frames = episode len * num of actor
+        self.init_tensors()
+        self.last_mean_rewards = -100500
+        start_time = time.time()
+        total_time = 0
+        rep_count = 0
+        self.frame = 0
+        #! go to RLGPUEnv and get full_state['obs']
+        self.obs = self.env_reset()
+        self.curr_frames = self.batch_size_envs
         
-        model_output_file = os.path.join(self.nn_dir, self.config['name'])      #! make output directory
-        
+        name = self.config['name'] + "_" + datetime.now().strftime("%b:%d:%H:%M")
+        # model_output_file = os.path.join(self.nn_dir, self.config['name'])
+        model_output_file = os.path.join(self.nn_dir, name)
         if self.multi_gpu:
             self.hvd.setup_algo(self)
 
+        #! go to deepmm_agent._init_train() -> _init_amp_demo_buf(self)
+        self._init_train()
 
-        self._init_train()                                                      #! amp_agent._init_train() -> _init_amp_demo_buf(self)
-
-        while True:                                                             #! training loop
-            epoch_num = self.update_epoch()                                     #! one_epoch update(epoch_num+=1)
-            train_info = self.train_epoch()                                     #! go to amp_agent.train_epoch()
+        while True:
+            epoch_num = self.update_epoch()
+            train_info = self.train_epoch() #! go to deepmm_agent
 
             sum_time = train_info['total_time']                                 #! get one epoch total time
             total_time += sum_time                                              #! get total time
@@ -157,7 +167,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
                 self.writer.add_scalar('info/epochs', epoch_num, frame)         #! writer add scalar
                 self._log_train_info(train_info, frame)                         #! write the other quantities
 
-                self.algo_observer.after_print_stats(frame, epoch_num, total_time)  #! RLGPUALgoObserver in run.py, after_print_status
+                self.algo_observer.after_print_stats(frame, epoch_num, total_time)  #! run.py의 RLGPUALgoObserver
                 
                 if self.game_rewards.current_size > 0:
                     mean_rewards = self._get_mean_rewards()                         #! get mean rewards
@@ -182,10 +192,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
                             int_model_output_file = model_output_file + '_' + str(epoch_num).zfill(8)
                             self.save(int_model_output_file)                        #! save intermediate model
 
-                if epoch_num > self.max_epochs:                                     #! max epoch condition
-                    self.save(model_output_file)                                    #! save final model
-                    print('MAX EPOCHS NUM!')                                        #! print training finish
-                    return self.last_mean_rewards, epoch_num                        #! return best mean rewards, total epoch num
+                if epoch_num > self.max_epochs: #! config[max_epochs]
+                    self.save(model_output_file)
+                    print('MAX EPOCHS NUM!')
+                    return self.last_mean_rewards, epoch_num
 
                 update_time = 0
         return
@@ -276,7 +286,6 @@ class CommonAgent(a2c_continuous.A2CAgent):
         print("before: ", train_info.keys())
         self._record_train_batch_info(batch_dict, train_info)
         print("after: ", train_info.keys())
-        exit()
         return train_info
 
     def play_steps(self):
@@ -488,8 +497,8 @@ class CommonAgent(a2c_continuous.A2CAgent):
 
     def env_reset(self, env_ids=None):
         #! vec_env = __main__.RLGPUEnv
-        obs = self.vec_env.reset(env_ids)       #! env reset and get first observation
-        obs = self.obs_to_tensors(obs)          #! convert observation to tensor
+        obs = self.vec_env.reset(env_ids)
+        obs = self.obs_to_tensors(obs)
         return obs
 
     def bound_loss(self, mu):

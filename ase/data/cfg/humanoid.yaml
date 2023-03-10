@@ -1,7 +1,7 @@
 # if given, will override the device setting in gym. 
 env: 
-  numEnvs: 4096
-  envSpacing: 5
+  numEnvs: 2
+  envSpacing: 2
   episodeLength: 300
   isFlagrun: False
   enableDebugVis: False
@@ -9,7 +9,7 @@ env:
   pdControl: True
   powerScale: 1.0
   controlFrequencyInv: 2 # 30 Hz
-  stateInit: "Random"
+  stateInit: "Start"
   hybridInitProb: 0.5
   numAMPObsSteps: 10
 
@@ -18,11 +18,12 @@ env:
   contactBodies: ["right_foot", "left_foot"]
   terminationHeight: 0.15
   enableEarlyTermination: True
+  useComreward: True 
 
   asset:
     assetRoot: "ase/data/assets"
     assetFileName: "mjcf/amp_humanoid.xml"
-
+    kinAssetFileName: "mjcf/kin_humanoid.xml"
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0

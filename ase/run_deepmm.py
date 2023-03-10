@@ -56,10 +56,8 @@ args = None
 cfg = None
 cfg_train = None
 
-def create_rlgpu_env(**kwargs):
+def create_mimic_env(**kwargs):
     use_horovod = cfg_train['params']['config'].get('multi_gpu', False)
-    
-    #! For multi-GPU setting
     if use_horovod:
         import horovod.torch as hvd
 
@@ -96,7 +94,7 @@ def create_rlgpu_env(**kwargs):
     return env
 
 
-class RLGPUAlgoObserver(AlgoObserver):
+class MimicAlgoObserver(AlgoObserver):
     def __init__(self, use_successes=True):
         self.use_successes = use_successes
         return
@@ -131,29 +129,30 @@ class RLGPUAlgoObserver(AlgoObserver):
         return
 
 
-class RLGPUEnv(vecenv.IVecEnv):
+class MimicEnv(vecenv.IVecEnv):
     def __init__(self, config_name, num_actors, **kwargs):
-        #! config_name: rlgpu 
-        #! env_configurations.configurations[config_name]: {'env_creator': <function <lambda> at 0x7f80565f43b0>, 'vecenv_type': 'RLGPU'}
-        self.env = env_configurations.configurations[config_name]['env_creator'](**kwargs)  #! env.tasks.vec_task_wrappers.VecTaskPythonWrapper
+        #! config_name: mimic 
+        #! env_configurations.configurations[config_name]: {'env_creator': <function <lambda> at 0x7f80565f43b0>, 'vecenv_type': 'Mimic'}
+        self.env = env_configurations.configurations[config_name]['env_creator'](**kwargs)  #! env.tasks.vec_task_wrappers.VecTaskDeepmmWrapper
         self.use_global_obs = (self.env.num_states > 0)
 
         self.full_state = {}
-        self.full_state["obs"] = self.reset()                                               #! reset and get state observation
+        self.full_state["obs"] = self.reset()
         if self.use_global_obs:
             self.full_state["states"] = self.env.get_state()
         return
 
     def step(self, action):
-        next_obs, reward, is_done, info = self.env.step(action)                             #! env step and get s', r, done, info
+        #! self.env == VecTaskDeepmmWrapper
+        next_obs, reward, is_done, info = self.env.step(action) #! env.step --> goes to VecTaskPython.step() -> self.task.step() -> goes to base_task.py -> post_physics_step()
 
         # todo: improve, return only dictinary
-        self.full_state["obs"] = next_obs                                                   #! set full_state["obs"] as next_obs
+        self.full_state["obs"] = next_obs
         if self.use_global_obs:
             self.full_state["states"] = self.env.get_state()
             return self.full_state, reward, is_done, info
         else:
-            return self.full_state["obs"], reward, is_done, info                            #! return s', r, done, info
+            return self.full_state["obs"], reward, is_done, info
 
     def reset(self, env_ids=None):
         #! self.env => vec_task_wrapper.py
@@ -162,23 +161,22 @@ class RLGPUEnv(vecenv.IVecEnv):
             self.full_state["states"] = self.env.get_state()
             return self.full_state
         else:
-            return self.full_state["obs"]                                                   #! return observation
+            return self.full_state["obs"]
 
     def get_number_of_agents(self):
-        return self.env.get_number_of_agents()                              #! peng not use multi-agent code
+        return self.env.get_number_of_agents()
 
     def get_env_info(self):
-        #! called by a2c_common agent
         info = {}
         info['action_space'] = self.env.action_space                        # VecTask() -> self.act_space -> spaces.Box
         info['observation_space'] = self.env.observation_space              # VecTask() -> self.obs_space -> spaces.Box
-        info['amp_observation_space'] = self.env.amp_observation_space
+        # info['amp_observation_space'] = self.env.amp_observation_space
 
         if self.use_global_obs:
             info['state_space'] = self.env.state_space
             print(info['action_space'], info['observation_space'], info['state_space'])
         else:
-            print(info['action_space'], info['observation_space'])          #! not use state_space(global observation)
+            print(info['action_space'], info['observation_space'])
 
         return info
 
@@ -187,36 +185,26 @@ class RLGPUEnv(vecenv.IVecEnv):
 # 위 식과 동등
 # 2. def function(parameter list):
 #       return expression
-vecenv.register('RLGPU', lambda config_name, num_actors, **kwargs: RLGPUEnv(config_name, num_actors, **kwargs))
+vecenv.register('Mimic', lambda config_name, num_actors, **kwargs: MimicEnv(config_name, num_actors, **kwargs))
 '''
 env_configurations: env 만들 수 있다!
 env_configurations.configurations 안에 아래 변수 추가됌
-'rlgpu', {
-    'vecenv_type': 'RLGPU'
-    'env_creator': lambda **kwargs: create_rlgpu_env(**kwargs),
+'mimic', {
+    'vecenv_type': 'Mimic'
+    'env_creator': lambda **kwargs: create_mimic_env(**kwargs),
     }
 '''
-env_configurations.register('rlgpu', {
-    'env_creator': lambda **kwargs: create_rlgpu_env(**kwargs),
-    'vecenv_type': 'RLGPU'})                                                                                        #! register env_cofig as global
+env_configurations.register('mimic', {
+    'env_creator': lambda **kwargs: create_mimic_env(**kwargs),
+    'vecenv_type': 'Mimic'})
 
 def build_alg_runner(algo_observer):
     runner = Runner(algo_observer)
-    
-    runner.algo_factory.register_builder('amp', lambda **kwargs : amp_agent.AMPAgent(**kwargs))
-    runner.player_factory.register_builder('amp', lambda **kwargs : amp_players.AMPPlayerContinuous(**kwargs))
-    runner.model_builder.model_factory.register_builder('amp', lambda network, **kwargs : amp_models.ModelAMPContinuous(network)) # ModelA2CContinuousLogStd 
-    runner.model_builder.network_factory.register_builder('amp', lambda **kwargs : amp_network_builder.AMPBuilder())              # network_builder.A2CBuilder
-    
-    # runner.algo_factory.register_builder('ase', lambda **kwargs : ase_agent.ASEAgent(**kwargs))
-    # runner.player_factory.register_builder('ase', lambda **kwargs : ase_players.ASEPlayer(**kwargs))
-    # runner.model_builder.model_factory.register_builder('ase', lambda network, **kwargs : ase_models.ModelASEContinuous(network))  
-    # runner.model_builder.network_factory.register_builder('ase', lambda **kwargs : ase_network_builder.ASEBuilder())
-    
-    # runner.algo_factory.register_builder('hrl', lambda **kwargs : hrl_agent.HRLAgent(**kwargs))
-    # runner.player_factory.register_builder('hrl', lambda **kwargs : hrl_players.HRLPlayer(**kwargs))
-    # runner.model_builder.model_factory.register_builder('hrl', lambda network, **kwargs : hrl_models.ModelHRLContinuous(network))  
-    # runner.model_builder.network_factory.register_builder('hrl', lambda **kwargs : hrl_network_builder.HRLBuilder())
+
+    runner.algo_factory.register_builder('deepmm', lambda **kwargs : deepmm_agent.DeepmmAgent(**kwargs))
+    runner.player_factory.register_builder('deepmm', lambda **kwargs : deepmm_players.DeepmmPlayerContinuous(**kwargs))
+    runner.model_builder.model_factory.register_builder('deepmm', lambda network, **kwargs : deepmm_models.ModelDeepmmContinuous(network))  
+    runner.model_builder.network_factory.register_builder('deepmm', lambda **kwargs : deepmm_network_builder.DeepmmBuilder())
     
     return runner
 
@@ -225,33 +213,30 @@ def main():
     global cfg
     global cfg_train
 
-    set_np_formatting()                             #! set np print option for debugging
-    args = get_args()                               #! parse args and use it for isaacGym setting
-    cfg, cfg_train, logdir = load_cfg(args)         #! divide args to cfg, cfg_train(dictionary from yml file loading), respectively
+    set_np_formatting()
+    args = get_args()
+    cfg, cfg_train, logdir = load_cfg(args)
 
-                                                    #! set seed, and cuDnn non-deterministic property
     cfg_train['params']['seed'] = set_seed(cfg_train['params'].get("seed", -1), cfg_train['params'].get("torch_deterministic", False))
 
-
-    if args.horovod:                                #! manipulate Mutli-GPU case
+    if args.horovod:
         cfg_train['params']['config']['multi_gpu'] = args.horovod
 
-    if args.horizon_length != -1:                   #! total simulation length regardless of env reset
+    if args.horizon_length != -1:
         cfg_train['params']['config']['horizon_length'] = args.horizon_length
 
-    if args.minibatch_size != -1:                   #! ppo optimization minibatch epoch update
+    if args.minibatch_size != -1:
         cfg_train['params']['config']['minibatch_size'] = args.minibatch_size
         
-    if args.motion_file:                            #! set designated motion file
+    if args.motion_file:
         cfg['env']['motion_file'] = args.motion_file
     
     # Create default directories for weights and statistics
     cfg_train['params']['config']['train_dir'] = args.output_path
     
- 
-    vargs = vars(args)                              #! convert args to dictionary
+    vargs = vars(args)
 
-    algo_observer = RLGPUAlgoObserver()             #! make RLGPU env observer
+    algo_observer = MimicAlgoObserver()
 
     runner = build_alg_runner(algo_observer)
     #! train config의 ["params"]를 runner의 config로 저장

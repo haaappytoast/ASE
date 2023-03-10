@@ -48,9 +48,11 @@ class HumanoidAMP(Humanoid):
         Hybrid = 3
 
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
+        #! from ase/data/cfg
         state_init = cfg["env"]["stateInit"]
         self._state_init = HumanoidAMP.StateInit[state_init]
         self._hybrid_init_prob = cfg["env"]["hybridInitProb"]
+        #! amp discriminator을 위한 obs history
         self._num_amp_obs_steps = cfg["env"]["numAMPObsSteps"]
         assert(self._num_amp_obs_steps >= 2)
 
@@ -66,17 +68,18 @@ class HumanoidAMP(Humanoid):
 
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
-
+        # #! shape: torch.Size([1, 10, 125]
         self._amp_obs_buf = torch.zeros((self.num_envs, self._num_amp_obs_steps, self._num_amp_obs_per_step), device=self.device, dtype=torch.float)
-        self._curr_amp_obs_buf = self._amp_obs_buf[:, 0]
-        self._hist_amp_obs_buf = self._amp_obs_buf[:, 1:]
+        self._curr_amp_obs_buf = self._amp_obs_buf[:, 0]    #! shape: (1, 125)
+        self._hist_amp_obs_buf = self._amp_obs_buf[:, 1:]   #! shape: (1, 9, 125)
         
         self._amp_obs_demo_buf = None
 
         return
 
     def post_physics_step(self):
-        super().post_physics_step()
+        #! humanoid.py > obs = compute_humanoid_observations_max
+        super().post_physics_step() #! comes here back when _compute_reward()
         
         self._update_hist_amp_obs()
         self._compute_amp_observations()
@@ -87,12 +90,15 @@ class HumanoidAMP(Humanoid):
         return
 
     def get_num_amp_obs(self):
+        #! 10 * 125
         return self._num_amp_obs_steps * self._num_amp_obs_per_step
 
+    #! used in vec_task_wrapper.py > fetch_amp_obs_demo > agent.py의 train_epoch에서 쓰임
     def fetch_amp_obs_demo(self, num_samples):
-
+        #! num_samples: ase/data/cfg/train/rlg 안의 amp_batch_size 임.
         if (self._amp_obs_demo_buf is None):
-            self._build_amp_obs_demo_buf(num_samples)
+             #! buf size: torch.Size([4, 10, 125)]
+            self._build_amp_obs_demo_buf(num_samples) #! => config.amp_batch_size 만큼
         else:
             assert(self._amp_obs_demo_buf.shape[0] == num_samples)
         
@@ -106,6 +112,7 @@ class HumanoidAMP(Humanoid):
 
         amp_obs_demo = self.build_amp_obs_demo(motion_ids, motion_times0)
         self._amp_obs_demo_buf[:] = amp_obs_demo.view(self._amp_obs_demo_buf.shape)
+        #! shape: [amp_batch_size, self._num_amp_obs_steps * self._num_amp_obs_per_step]        
         amp_obs_demo_flat = self._amp_obs_demo_buf.view(-1, self.get_num_amp_obs())
 
         return amp_obs_demo_flat
@@ -122,6 +129,7 @@ class HumanoidAMP(Humanoid):
         motion_times = motion_times.view(-1)
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
+        #! ref state에 대한 observation               
         amp_obs_demo = build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel,
                                               dof_pos, dof_vel, key_pos,
                                               self._local_root_obs, self._root_height_obs,
@@ -129,6 +137,7 @@ class HumanoidAMP(Humanoid):
         return amp_obs_demo
 
     def _build_amp_obs_demo_buf(self, num_samples):
+        #! torch.Size([config.amp_batch_size, 10, 125)
         self._amp_obs_demo_buf = torch.zeros((num_samples, self._num_amp_obs_steps, self._num_amp_obs_per_step), device=self.device, dtype=torch.float32)
         return
         
@@ -166,6 +175,7 @@ class HumanoidAMP(Humanoid):
 
         return
 
+    #! state 다시 initialize 해주는 코드!
     def _reset_actors(self, env_ids):
         if (self._state_init == HumanoidAMP.StateInit.Default):
             self._reset_default(env_ids)
@@ -196,10 +206,10 @@ class HumanoidAMP(Humanoid):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
-
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
 
+        #! env_state를 motion_times에 맞게 세팅해줌. (self._humanoid_root_states, _dof_pos, _dof_vel)
         self._set_env_state(env_ids=env_ids, 
                             root_pos=root_pos, 
                             root_rot=root_rot, 
@@ -229,8 +239,10 @@ class HumanoidAMP(Humanoid):
         return
 
     def _init_amp_obs(self, env_ids):
+        #! 여기서 지금 현재 amp_observation 계산하고
         self._compute_amp_observations(env_ids)
 
+        #! reference onb initialize 해주기
         if (len(self._reset_default_env_ids) > 0):
             self._init_amp_obs_default(self._reset_default_env_ids)
 
@@ -281,10 +293,14 @@ class HumanoidAMP(Humanoid):
             for i in reversed(range(self._amp_obs_buf.shape[1] - 1)):
                 self._amp_obs_buf[env_ids, i + 1] = self._amp_obs_buf[env_ids, i]
         return
-    
+
+    #! 여기서 부터 시작!! -> 여기에 어떻게 phase 넣어줄 것인지 볼것!!
     def _compute_amp_observations(self, env_ids=None):
         key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
         if (env_ids is None):
+            #! look at humanoid.py for _rigid_body_*
+            #? how can I added phase variable here ?
+            #? 여기는 진짜 rigid_body에 대한 observation!
             self._curr_amp_obs_buf[:] = build_amp_observations(self._rigid_body_pos[:, 0, :],
                                                                self._rigid_body_rot[:, 0, :],
                                                                self._rigid_body_vel[:, 0, :],
@@ -338,7 +354,12 @@ def build_amp_observations(root_pos, root_rot, root_vel, root_ang_vel, dof_pos, 
                                                heading_rot_expand.shape[2])
     local_end_pos = quat_rotate(flat_heading_rot, flat_end_pos)
     flat_local_key_pos = local_end_pos.view(local_key_body_pos.shape[0], local_key_body_pos.shape[1] * local_key_body_pos.shape[2])
-    
+    #! normal-tangent encoding
     dof_obs = dof_to_obs(dof_pos, dof_obs_size, dof_offsets)
+    #! 40 == motion frame number
+    #? 왜 root에 대한 정보가 들어갔을까? [40, 125]
+    #! shape: root_h_obs: [40, 1] root_rot_obs: [40, 6] local_root_vel: [40, 3] 
+    #! local_root_ang_vel: [40, 3] dof_obs: [40, 72] dof_vel: [40, 28] flat_local_key_pos: [40, 12]
     obs = torch.cat((root_h_obs, root_rot_obs, local_root_vel, local_root_ang_vel, dof_obs, dof_vel, flat_local_key_pos), dim=-1)
+
     return obs
