@@ -124,7 +124,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         self.obs = self.env_reset()
         self.curr_frames = self.batch_size_envs
         
-        name = self.config['name'] + "_" + datetime.now().strftime("%b:%d:%H:%M")
+        name = self.config['name']
         # model_output_file = os.path.join(self.nn_dir, self.config['name'])
         model_output_file = os.path.join(self.nn_dir, name)
         if self.multi_gpu:
@@ -178,7 +178,10 @@ class CommonAgent(a2c_continuous.A2CAgent):
                 if self.save_freq > 0:
                     if (epoch_num % self.save_freq == 0):
                         self.save(model_output_file)
-
+                        print("*" * 10)
+                        print("mean rewards: ", mean_rewards)
+                        print("mean lengths: ", mean_lengths)
+                        print("*" * 10)
                         if (self._save_intermediate):
                             int_model_output_file = model_output_file + '_' + str(epoch_num).zfill(8)
                             self.save(int_model_output_file)

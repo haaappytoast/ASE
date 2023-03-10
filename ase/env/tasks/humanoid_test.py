@@ -405,18 +405,16 @@ def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel
     flat_local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel)                                       #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
     local_body_ang_vel = flat_local_body_ang_vel.reshape(body_ang_vel.shape[0], body_ang_vel.shape[1] * body_ang_vel.shape[2])   # torch.Size([1, 15 * 3])
     
-    local_rot = quat_identity_like(body_rot)    # shape: [num_envs, 15, 4] every element: (0, 0, 0, 1)
+    local_rot = quat_identity_like(body_rot).to('cuda')        # shape: [num_envs, 15, 4] every element: (0, 0, 0, 1)
     #!! should add phase variable to observation
     for node_index in range(flat_body_rot.shape[0]):
         # root
         if node_index == 0:
             local_rot[..., node_index, :] = body_rot[..., node_index, :]
-            print("root rot: ", body_rot[..., node_index, :])
         # node joints
         else:
             local_rot[..., node_index, :] = quat_mul_norm(quat_inverse(body_rot[..., node_index-1, :]), body_rot[..., node_index, :])
 
-    
     flat_local_rot = local_rot.reshape(local_rot.shape[0], local_rot.shape[1] * local_rot.shape[2])     # shape: [num_envs, 15 * 4]
 
     #! for experiment of using raw local rotation
@@ -431,10 +429,10 @@ def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel
 @torch.jit.script
 def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     # type: (Tensor, Tensor, Tensor) -> Tensor
-    print("****************")
-    print("ref_buf: \n", ref_buf)
-    print("motion_times: ", motion_times)
-    print("****************")
+    # print("****************")
+    # print("ref_buf: \n", ref_buf)
+    # print("motion_times: ", motion_times)
+    # print("****************")
     # pose reward
     num_envs = obs_buf.shape[0]
     num_rigid_body = 15
