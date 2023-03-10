@@ -1,6 +1,6 @@
 # if given, will override the device setting in gym. 
 env: 
-  numEnvs: 2
+  numEnvs: 1
   envSpacing: 2
   episodeLength: 300
   isFlagrun: False
@@ -9,7 +9,7 @@ env:
   pdControl: True
   powerScale: 1.0
   controlFrequencyInv: 2 # 30 Hz
-  stateInit: "Start"
+  stateInit: "Random"
   hybridInitProb: 0.5
   numAMPObsSteps: 10
 

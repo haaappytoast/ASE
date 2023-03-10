@@ -43,7 +43,7 @@ from utils import torch_utils
 import sys
 from poselib.poselib.core import *
 
-class HumanoidDeepmm(Humanoid):
+class HumanoidTest(Humanoid):
     class StateInit(Enum):
         Start = 1
         Random = 2
@@ -51,7 +51,7 @@ class HumanoidDeepmm(Humanoid):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         state_init = cfg["env"]["stateInit"]
         #! from ase/data/cfg
-        self._state_init = HumanoidDeepmm.StateInit[state_init]
+        self._state_init = HumanoidTest.StateInit[state_init]
 
         self._usePhase = True
 
@@ -66,7 +66,7 @@ class HumanoidDeepmm(Humanoid):
                          headless=headless)
 
         #! set reference motion
-        self._env_ids = torch.zeros(self.num_envs, device=self.device)
+        self._env_ids = torch.range(0, self.num_envs-1, device=self.device, dtype=torch.int64)
         self._motion_ids = torch.zeros(self.num_envs, device=self.device, dtype=torch.int64)
         self._motion_times = torch.zeros(self.num_envs, device=self.device)
         self._phase = torch.zeros(self.num_envs, device=self.device)
@@ -80,13 +80,34 @@ class HumanoidDeepmm(Humanoid):
         self.temp = 0
         return
 
+    # def pre_physics_step(self, actions):
+    #     root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
+    #     = self._motion_lib.get_motion_state(self._motion_ids, self._motion_times)
+    #     # reset humanoid state
+    #     self._set_env_state(env_ids=self._env_ids, 
+    #                         root_pos=root_pos, 
+    #                         root_rot=root_rot, 
+    #                         dof_pos=dof_pos, 
+    #                         root_vel=root_vel, 
+    #                         root_ang_vel=root_ang_vel, 
+    #                         dof_vel=dof_vel)
+    #     return
+    
     def post_physics_step(self):
+
+        # debug for reference motion
+        # print("*"*10, "2. post physics step", "*"*10)
+        # print("self._motion_times: ", self._motion_times)
+        # print("self._rigid_body_rot[env_ids]: \n", self._rigid_body_rot[self._env_ids])
+        # print("\n\nglobal_quat: \n", global_quat)
+        # print("*"*10, "\n\n")
+
         self.progress_buf += 1
         self.ones = torch.ones(self._motion_times.shape).to(self.device)
         self._motion_times += self.ones * self.dt
-        # print("*"*10, "post physics step", "*"*10)
+        # print("*"*10, "2. post physics step", "*"*10)
         # print(self._motion_times)
-        # print("*"*10)
+        # print("*"*10, "\n\n")
         # self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, -1)
 
         self._refresh_sim_tensors()
@@ -95,6 +116,7 @@ class HumanoidDeepmm(Humanoid):
         #! compute reference observation                
         self._compute_ref_observations()
 
+        self.actions = None
         self._compute_reward(self.actions)
         self._compute_reset()
         
@@ -168,15 +190,15 @@ class HumanoidDeepmm(Humanoid):
         if (env_ids is None):
             self.ref_buf[:] = ref_obs
         else:
-            print("3. reset된 env에 대해서 buffer에 ref_observation 값 넣어주기 : ", env_ids, "\n\n\n")
+            # print("3. reset된 env에 대해서 buffer에 ref_observation 값 넣어주기 : ", env_ids, "\n\n\n")
             self.ref_buf[env_ids] = ref_obs
         
         return
     
     #! state 다시 initialize 해주는 코드!
     def _reset_actors(self, env_ids):
-        if (self._state_init == HumanoidDeepmm.StateInit.Start
-              or self._state_init == HumanoidDeepmm.StateInit.Random):
+        if (self._state_init == HumanoidTest.StateInit.Start
+              or self._state_init == HumanoidTest.StateInit.Random):
             self._reset_ref_state_init(env_ids)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
@@ -186,9 +208,9 @@ class HumanoidDeepmm(Humanoid):
         num_envs = env_ids.shape[0]
         motion_ids = self._motion_lib.sample_motions(num_envs)
                 
-        if (self._state_init == HumanoidDeepmm.StateInit.Random):
+        if (self._state_init == HumanoidTest.StateInit.Random):
             motion_times = self._motion_lib.sample_time(motion_ids)
-        elif (self._state_init == HumanoidDeepmm.StateInit.Start):
+        elif (self._state_init == HumanoidTest.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
@@ -241,12 +263,12 @@ class HumanoidDeepmm(Humanoid):
             body_vel = self._rigid_body_vel
             body_ang_vel = self._rigid_body_ang_vel
         else:
-            body_pos = self._rigid_body_pos[env_ids]
-            body_rot = self._rigid_body_rot[env_ids]
-            body_vel = self._rigid_body_vel[env_ids]
-            body_ang_vel = self._rigid_body_ang_vel[env_ids]
+            body_pos = self._rigid_body_pos[env_ids]            # [num_envs, 15, 3]
+            body_rot = self._rigid_body_rot[env_ids]            # [num_envs, 15, 4]
+            body_vel = self._rigid_body_vel[env_ids]            # [num_envs, 15, 3]
+            body_ang_vel = self._rigid_body_ang_vel[env_ids]    # [num_envs, 15, 3]
         
-        obs = compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
+        obs = compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
                                                 self._root_height_obs)
         return obs
 
@@ -261,24 +283,6 @@ class HumanoidDeepmm(Humanoid):
             local_body_rot, local_body_angvel, global_ee_pos \
                 = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
 
-        # else:
-        #     # reset할 게 있다면, 
-        #     if (self._reset_ref_motion_ids.shape[0] != self.num_envs):
-        #         local_body_rot, local_body_angvel, global_ee_pos \
-        #             = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
-        #         print("-"*10, " 2-1. inside compute_ref_obs, reset env에 대한 ref observation 구하기", "-"*10)
-        #         print("self._reset_ref_motion_times: ", self._reset_ref_motion_times)
-        #         print("-"*10)
-            
-        #     # reset이 아니라면 
-        #     else:
-        #         local_body_rot, local_body_angvel, global_ee_pos \
-        #             = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
-        #         print("-"*10, "2-2. inside compute_ref_obs: post physics step 모든 ref observation 구하기", "-"*10)
-        #         print("self._motion_times: ", self._motion_times)
-        #         print("-"*10)
-
-        # reset할 env가 있으면,
         else:
             local_body_rot, local_body_angvel, global_ee_pos \
                 = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
@@ -289,12 +293,12 @@ class HumanoidDeepmm(Humanoid):
         flat_local_body_angvel = local_body_angvel.reshape(local_body_angvel.size(0), local_body_angvel.size(1) * local_body_angvel.size(2))  #! 확인 필요  # [num_envs, 15 * 3]
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
 
-        print("*" * 10)
-        print("self._motion_times: ", self._motion_times)
-        print("local_body_rot: ", local_body_rot)
-        print("*" * 10, "\n")
-        print("flat_local_body_rot: ", flat_local_body_rot)
-        print("*" * 10, "\n\n\n\n")
+        # print("*" * 10)
+        # print("self._motion_times: ", self._motion_times)
+        # print("local_body_rot: ", local_body_rot)
+        # print("*" * 10, "\n")
+        # print("flat_local_body_rot: ", flat_local_body_rot)
+        # print("*" * 10, "\n\n\n\n")
         # [num_envs, 117] = 15 * 4 + 15 * 3 + 4 * 3
         ref_obs = torch.cat((flat_local_body_rot, flat_local_body_angvel, flat_global_ee_pos), dim=-1)
         return ref_obs
@@ -307,7 +311,7 @@ class HumanoidDeepmm(Humanoid):
         # print("ref_obs: ", ref_obs[:, 0:60])
         # print("*" * 10, "\n\n\n\n")
 
-        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs)
+        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, self._motion_times)
         return
 
 #####################################################################
@@ -361,11 +365,76 @@ def compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel
     obs = torch.cat((root_h_obs, local_body_pos, local_body_rot_obs, local_body_vel, local_body_ang_vel), dim=-1)
     return obs
 
+@torch.jit.script
+def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel, local_root_obs, root_height_obs):
+    # type: (Tensor, Tensor, Tensor, Tensor, bool, bool) -> Tensor
+    root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
+    root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
+    root_h = root_pos[:, 2:3]       # get z-value
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)
+    if (not root_height_obs):
+        root_h_obs = torch.zeros_like(root_h)
+    else:
+        root_h_obs = root_h
+    
+    heading_rot_expand = heading_rot.unsqueeze(-2)
+    heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
+    flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                                    heading_rot_expand.shape[2])        # shrink shape: [1, 15, 4] -> [15, 4]
+    
+    root_pos_expand = root_pos.unsqueeze(-2)            # shape: [1, 1, 3]
+    local_body_pos = body_pos - root_pos_expand         #! root_relative_position / shape: [1, 15, 3] / 15: num_body
+    flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])    # shrink shape: [15, 3]/ 15: num_body
+    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! root의 local x-axis에서 바라본 root_relative_position of link / shape: [1, 15, 3]
+    local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])    # [1, 15 * 3]
+    # local_body_pos = local_body_pos[..., 3:] # remove root pos
+
+    flat_body_rot = body_rot.reshape(body_rot.shape[0] * body_rot.shape[1], body_rot.shape[2])  # shape: [15, 4]
+    flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [15 * num_envs, 4]
+    local_body_rot_obs = flat_local_body_rot.reshape(body_rot.shape[0], body_rot.shape[1] * flat_local_body_rot.shape[1])   #shape: [1, 15 * 4]
+    
+    #? 어 그럼 false면 이 안에 들어가는 값은 뭐지?
+    if (local_root_obs):
+        local_body_rot_obs[..., 0:4] = root_rot
+
+    flat_body_vel = body_vel.reshape(body_vel.shape[0] * body_vel.shape[1], body_vel.shape[2])  # torch.Size([15, 3])
+    flat_local_body_vel = quat_rotate(flat_heading_rot, flat_body_vel)                          #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
+    local_body_vel = flat_local_body_vel.reshape(body_vel.shape[0], body_vel.shape[1] * body_vel.shape[2])  # torch.Size([1, 15 * 3])
+    
+    flat_body_ang_vel = body_ang_vel.reshape(body_ang_vel.shape[0] * body_ang_vel.shape[1], body_ang_vel.shape[2])   # torch.Size([15, 3])
+    flat_local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel)                                       #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
+    local_body_ang_vel = flat_local_body_ang_vel.reshape(body_ang_vel.shape[0], body_ang_vel.shape[1] * body_ang_vel.shape[2])   # torch.Size([1, 15 * 3])
+    
+    local_rot = quat_identity_like(body_rot)    # shape: [num_envs, 15, 4] every element: (0, 0, 0, 1)
+    #!! should add phase variable to observation
+    for node_index in range(flat_body_rot.shape[0]):
+        # root
+        if node_index == 0:
+            local_rot[..., node_index, :] = body_rot[..., node_index, :]
+            print("root rot: ", body_rot[..., node_index, :])
+        # node joints
+        else:
+            local_rot[..., node_index, :] = quat_mul_norm(quat_inverse(body_rot[..., node_index-1, :]), body_rot[..., node_index, :])
+
+    
+    flat_local_rot = local_rot.reshape(local_rot.shape[0], local_rot.shape[1] * local_rot.shape[2])     # shape: [num_envs, 15 * 4]
+
+    #! for experiment of using raw local rotation
+    # shape: [1, 196] = 1 + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
+    #                0           1 : 46          46 : 106            106 : 151       151 : 196 (-1)                     
+    # obs = torch.cat((root_h_obs, local_body_pos, local_body_rot_obs, local_body_vel, local_body_ang_vel), dim=-1)
+    #                0           1 : 46          46 : 106            106 : 151       151 : 196 (-1)                     
+    obs = torch.cat((root_h_obs, local_body_pos, flat_local_rot, local_body_vel, local_body_ang_vel), dim=-1)
+    return obs
+
 
 @torch.jit.script
-def compute_deepmm_reward(obs_buf, ref_buf):
-    # type: (Tensor, Tensor) -> Tensor
-
+def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
+    # type: (Tensor, Tensor, Tensor) -> Tensor
+    print("****************")
+    print("ref_buf: \n", ref_buf)
+    print("motion_times: ", motion_times)
+    print("****************")
     # pose reward
     num_envs = obs_buf.shape[0]
     num_rigid_body = 15

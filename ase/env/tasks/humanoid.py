@@ -175,11 +175,9 @@ class Humanoid(BaseTask):
 
     def _reset_envs(self, env_ids):
         if (len(env_ids) > 0):
-            #! humanoid_deepmm에 Initialization Strategy에 따라 ref state 다시 initialize 해주는 코드!
-            #! reset_env also
-            
+            #! humanoid_deepmm에 Initialization Strategy에 따라 끝난 envs에 대해서 humanoid state를 initialize 해주는 코드!
             self._reset_actors(env_ids)
-            #! ref state buffer를 initialize 해주는 코드!
+            #! humanoid state buffer를 initialize 해주는 코드!
             self._reset_env_tensors(env_ids)
             self._refresh_sim_tensors()
             #! compute humanoid state -> 이걸로 그냥 실행 / humanoid_amp_task는 task obs랑 concat해줌
