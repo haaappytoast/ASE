@@ -442,7 +442,7 @@ class DeepMimicMotionLib(MotionLib):
         global_quat0 = self.grs[f0l]
         global_quat1 = self.grs[f1l]
 
-        vals = [global_quat0]
+        vals = [global_quat0, global_quat1]
         for v in vals:
             assert v.dtype != torch.float64
 
@@ -459,11 +459,10 @@ class DeepMimicMotionLib(MotionLib):
         dt = self._motion_dt[motion_ids]                    
 
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
-
         f0l = frame_idx0 + self.length_starts[motion_ids]
         f1l = frame_idx1 + self.length_starts[motion_ids]
         
-        local_rot0 = self.lrs[f0l]
+        local_rot0 = self.lrs[f0l]  # (num_envs, rigid_body_size, 4)
         local_rot1 = self.lrs[f1l]
 
         vals = [local_rot0, local_rot1]

@@ -122,6 +122,7 @@ class DeepmmAgent(common_agent.CommonAgent):
 
             #! 여기서 model에서 explore한 actions으로 obs, reward, dones, infos 가져오기
             #! go to run.py -> IVecEnv의 step으로 감 -> 
+            #! common_agent -> a2c_continuous -> a2c_common.py안의 A2CBase안에 env_step() 구현되어있음 -> baseTask.step()으로!
             self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])   #! reward <- humanoid.py의 _compute_reward()
             shaped_rewards = self.rewards_shaper(rewards)
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
