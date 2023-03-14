@@ -407,16 +407,12 @@ def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel
         # node joints
         else:
             local_rot[..., node_index, :] = quat_mul_norm(quat_inverse(body_rot[..., node_index-1, :]), body_rot[..., node_index, :])
-<<<<<<< HEAD
 
-    flat_local_rot = local_rot.reshape(local_rot.shape[0], local_rot.shape[1] * local_rot.shape[2])     # shape: [num_envs, 15 * 4]
-=======
     
     cuda = torch.device('cuda')
     local_rot.to(cuda)
     
     flat_local_rot = local_rot.reshape(local_rot.shape[0], local_rot.shape[1] * local_rot.shape[2]).to("cuda")     # shape: [num_envs, 15 * 4]
->>>>>>> temp
 
     #! for experiment of using raw local rotation
     # shape: [1, 196] = 1 + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
@@ -431,11 +427,7 @@ def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel
 def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     # type: (Tensor, Tensor, Tensor) -> Tensor
     # print("****************")
-<<<<<<< HEAD
     # print("ref_buf: \n", ref_buf)
-=======
-    # print("ref_buf: \n", ref_buf.shape)
->>>>>>> temp
     # print("motion_times: ", motion_times)
     # print("****************")
     # pose reward
