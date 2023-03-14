@@ -164,10 +164,7 @@ class DeepmmAgent(common_agent.CommonAgent):
         mb_next_values = self.experience_buffer.tensor_dict['next_values']
 
         mb_rewards = self.experience_buffer.tensor_dict['rewards']
-        # mb_amp_obs = self.experience_buffer.tensor_dict['amp_obs']
-        # amp_rewards = self._calc_amp_rewards(mb_amp_obs)
 
-        # mb_rewards = self._combine_rewards(mb_rewards, amp_rewards)
 
         mb_advs = self.discount_values(mb_fdones, mb_values, mb_rewards, mb_next_values)    # commen_agent.py
         mb_returns = mb_advs + mb_values
