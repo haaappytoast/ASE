@@ -171,13 +171,6 @@ class HumanoidTest(Humanoid):
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
             self._num_obs = 1 + 15 * (3 + 4 + 3 + 3)
-            
-        elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
-            self._dof_body_ids = [1, 2, 3, 4, 5, 7, 8, 11, 12, 13, 14, 15, 16]
-            self._dof_offsets = [0, 3, 6, 9, 10, 13, 16, 17, 20, 21, 24, 27, 28, 31]
-            self._dof_obs_size = 78
-            self._num_actions = 31
-            self._num_obs = 1 + 17 * (3 + 4 + 3 + 3) - 3
 
         else:
             print("Unsupported character config file: {s}".format(asset_file))
@@ -286,7 +279,7 @@ class HumanoidTest(Humanoid):
         else:
             local_body_rot, local_body_angvel, global_ee_pos \
                 = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
-            # print("-"*10, " 2-1. inside compute_ref_obs, reset env에 대한 ref observation 구하기", "-"*10)
+            # print("-"*10, " reset envs ", "-"*10)
             # print("self._reset_ref_motion_times: ", self._reset_ref_motion_times)
             # print("-"*10)
         flat_local_body_rot = local_body_rot.reshape(local_body_rot.shape[0], local_body_rot.shape[1] * local_body_rot.shape[2])                # [num_envs, 15 * 4]
@@ -407,15 +400,23 @@ def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel
     
     local_rot = quat_identity_like(body_rot).to('cuda')        # shape: [num_envs, 15, 4] every element: (0, 0, 0, 1)
     #!! should add phase variable to observation
-    for node_index in range(flat_body_rot.shape[0]):
+    for node_index in range(local_rot.shape[1]):    # body num
         # root
         if node_index == 0:
             local_rot[..., node_index, :] = body_rot[..., node_index, :]
         # node joints
         else:
             local_rot[..., node_index, :] = quat_mul_norm(quat_inverse(body_rot[..., node_index-1, :]), body_rot[..., node_index, :])
+<<<<<<< HEAD
 
     flat_local_rot = local_rot.reshape(local_rot.shape[0], local_rot.shape[1] * local_rot.shape[2])     # shape: [num_envs, 15 * 4]
+=======
+    
+    cuda = torch.device('cuda')
+    local_rot.to(cuda)
+    
+    flat_local_rot = local_rot.reshape(local_rot.shape[0], local_rot.shape[1] * local_rot.shape[2]).to("cuda")     # shape: [num_envs, 15 * 4]
+>>>>>>> temp
 
     #! for experiment of using raw local rotation
     # shape: [1, 196] = 1 + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
@@ -430,7 +431,11 @@ def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel
 def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     # type: (Tensor, Tensor, Tensor) -> Tensor
     # print("****************")
+<<<<<<< HEAD
     # print("ref_buf: \n", ref_buf)
+=======
+    # print("ref_buf: \n", ref_buf.shape)
+>>>>>>> temp
     # print("motion_times: ", motion_times)
     # print("****************")
     # pose reward
@@ -460,11 +465,13 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     # get quaternion difference
     inv_local_body_rot = quat_inverse(local_body_rot)
     body_rot_diff = quat_mul_norm(inv_local_body_rot, ref_local_body_rot)
+    
 
-    # get scalar rotation of a quaternion about its axis in radians
-    rot_diff_angle, rot_diff_axis = quat_angle_axis(body_rot_diff)
+    # get scalar rotation of a quaternion about its axis in radians 
+    rot_diff_angle, rot_diff_axis = quat_angle_axis(body_rot_diff)  # [num_envs * 15], [num_envs * 15, 3]
 
-    pose_reward = torch.exp(-2 * (torch.sum(rot_diff_angle**2, dim=-1)))
+    sum_rot_diff_angle = torch.sum(rot_diff_angle**2, dim=-1)
+    pose_reward = torch.exp(-2 * sum_rot_diff_angle)
 
     reward = pose_w * pose_reward
 
