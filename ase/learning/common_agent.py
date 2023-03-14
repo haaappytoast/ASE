@@ -179,9 +179,11 @@ class CommonAgent(a2c_continuous.A2CAgent):
                     if (epoch_num % self.save_freq == 0):
                         self.save(model_output_file)
                         print("*" * 10)
-                        print("mean rewards: ", mean_rewards)
-                        print("mean lengths: ", mean_lengths)
+                        print(f"mean rewards: , {mean_rewards[0]:.4f}")
+                        print(f"mean lengths:, {mean_lengths:.4f} ")
+                        print("current epoch: ", epoch_num)
                         print("*" * 10)
+
                         if (self._save_intermediate):
                             int_model_output_file = model_output_file + '_' + str(epoch_num).zfill(8)
                             self.save(int_model_output_file)
