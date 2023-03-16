@@ -35,6 +35,7 @@ from isaacgym import gymapi
 from isaacgym import gymtorch
 
 from env.tasks.humanoid import Humanoid, dof_to_obs
+from env.tasks.humanoid_temp import dof_to_local_rotation
 from utils import gym_util
 from utils.motion_lib import DeepMimicMotionLib
 from isaacgym.torch_utils import *
@@ -255,14 +256,21 @@ class HumanoidTest(Humanoid):
             body_rot = self._rigid_body_rot
             body_vel = self._rigid_body_vel
             body_ang_vel = self._rigid_body_ang_vel
+            dof_pos = self._dof_pos
+            dof_vel = self._dof_vel
         else:
             body_pos = self._rigid_body_pos[env_ids]            # [num_envs, 15, 3]
             body_rot = self._rigid_body_rot[env_ids]            # [num_envs, 15, 4]
             body_vel = self._rigid_body_vel[env_ids]            # [num_envs, 15, 3]
             body_ang_vel = self._rigid_body_ang_vel[env_ids]    # [num_envs, 15, 3]
+            dof_pos = self._dof_pos[env_ids]
+            dof_vel = self._dof_vel[env_ids]
+
+        obs = compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
+                                                self._root_height_obs, dof_pos)
         
-        obs = compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
-                                                self._root_height_obs)
+        # obs = compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
+        #                                         self._root_height_obs)
         return obs
 
     # 여기서 motion_times랑 motion_ids reset된 걸로 해야되는 건가? -> 확인해보기
@@ -356,6 +364,61 @@ def compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel
     # shape: [1, 196] = 1 + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
     #                0           1 : 46          46 : 106            106 : 151       151 : 196(-1)                     
     obs = torch.cat((root_h_obs, local_body_pos, local_body_rot_obs, local_body_vel, local_body_ang_vel), dim=-1)
+    return obs
+
+@torch.jit.script
+def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, local_root_obs, root_height_obs, dof_pos):
+    # type: (Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> Tensor
+    root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
+    root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
+    root_h = root_pos[:, 2:3]       # get z-value
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)
+    if (not root_height_obs):
+        root_h_obs = torch.zeros_like(root_h)
+    else:
+        root_h_obs = root_h
+    
+    heading_rot_expand = heading_rot.unsqueeze(-2)
+    heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
+    flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                                    heading_rot_expand.shape[2])        # shrink shape: [1, 15, 4] -> [15, 4]
+    
+    root_pos_expand = root_pos.unsqueeze(-2)            # shape: [1, 1, 3]
+    local_body_pos = body_pos - root_pos_expand         #! root_relative_position / shape: [1, 15, 3] / 15: num_body
+    flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])    # shrink shape: [15, 3]/ 15: num_body
+    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! root의 local x-axis에서 바라본 root_relative_position of link / shape: [1, 15, 3]
+    local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])    # [1, 15 * 3]
+    # local_body_pos = local_body_pos[..., 3:] # remove root pos
+
+    flat_body_rot = body_rot.reshape(body_rot.shape[0] * body_rot.shape[1], body_rot.shape[2])  # shape: [15, 4]
+    flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [15 * num_envs, 4]
+    local_body_rot_obs = flat_local_body_rot.reshape(body_rot.shape[0], body_rot.shape[1] * flat_local_body_rot.shape[1])   #shape: [1, 15 * 4]
+    
+    #? 어 그럼 false면 이 안에 들어가는 값은 뭐지?
+    if (local_root_obs):
+        local_body_rot_obs[..., 0:4] = root_rot
+
+    flat_body_vel = body_vel.reshape(body_vel.shape[0] * body_vel.shape[1], body_vel.shape[2])  # torch.Size([15, 3])
+    flat_local_body_vel = quat_rotate(flat_heading_rot, flat_body_vel)                          #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
+    local_body_vel = flat_local_body_vel.reshape(body_vel.shape[0], body_vel.shape[1] * body_vel.shape[2])  # torch.Size([1, 15 * 3])
+    
+    flat_body_ang_vel = body_ang_vel.reshape(body_ang_vel.shape[0] * body_ang_vel.shape[1], body_ang_vel.shape[2])   # torch.Size([15, 3])
+    flat_local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel)                                       #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
+    local_body_ang_vel = flat_local_body_ang_vel.reshape(body_ang_vel.shape[0], body_ang_vel.shape[1] * body_ang_vel.shape[2])   # torch.Size([1, 15 * 3])
+    
+    _dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
+    body_lrot = dof_to_local_rotation(dof_pos, 60, _dof_offsets)    # [num_envs, 60]
+
+    cuda = torch.device('cuda')
+    body_lrot.to(cuda)
+    
+
+    #! for experiment of using raw local rotation
+    # shape: [1, 196] = 1 + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
+    #                0           1 : 46          46 : 106            106 : 151       151 : 196 (-1)                     
+    # obs = torch.cat((root_h_obs, local_body_pos, local_body_rot_obs, local_body_vel, local_body_ang_vel), dim=-1)
+    #                0           1 : 46          46 : 106            106 : 151       151 : 196 (-1)                     
+    obs = torch.cat((root_h_obs, local_body_pos, body_lrot, local_body_vel, local_body_ang_vel), dim=-1)
     return obs
 
 @torch.jit.script
