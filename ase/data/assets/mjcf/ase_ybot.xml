@@ -59,6 +59,35 @@
               <camera name="egocentric" pos=".103 0 0.175" xyaxes="0 -1 0 .1 0 1" fovy="80"/>
             </body>
 
+            <body name="LeftShoulder" pos="0.007056 0.061058 0.091104">
+              <joint name="left_shoulder_x" axis="1 0 0" range="-180 45" stiffness="400" damping="40" armature=".02"/>
+              <joint name="left_shoulder_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
+              <joint name="left_shoulder_z" axis="0 0 1"  range="-90 90" stiffness="400" damping="40" armature=".02"/>
+              <geom name="LeftShoulder" fromto="0 0.05 0 0 0.12 0" size=".03" density="982"/>
+              
+              <body name="LeftArm" pos="-0.026009 0.126550 -0.002659">
+                <joint name="left_arm_x" axis="1 0 0" range="-180 45" stiffness="400" damping="40" armature=".02"/>
+                <joint name="left_arm_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
+                <joint name="left_arm_z" axis="0 0 1"  range="-90 90" stiffness="400" damping="40" armature=".02"/>
+                <geom name="LeftArm" fromto="0 0.05 0  0 0.27 0" size=".03" density="982"/>
+                <site name="LeftArm" class="touch" pos="0 0 -0.14" size="0.046 0.1" zaxis="0 0 1"/>
+
+                <body name="LeftForeArm" pos="0.0 0.274047 0.0">
+                  <joint name="left_elbow" axis="0 1 0" range="-160 0" stiffness="300" damping="30" armature=".01"/>
+                  <geom name="LeftForeArm" fromto="0 0.0525 0 0 0.20 0" size="0.03" density="1056"/>
+                  <site name="LeftForeArm" class="touch" pos="0 0 0.12" size="0.041 0.0685" zaxis="0 1 0"/>
+
+                  <body name="LeftHand" pos="0.0 0.276145 0.0">
+                    <joint name="left_hand_x" axis="1 0 0" range="-180 45" stiffness="400" damping="40" armature=".02"/>
+                    <joint name="left_hand_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
+                    <joint name="left_hand_z" axis="0 0 1"  range="-90 90" stiffness="400" damping="40" armature=".02"/>
+                    <geom name="LeftHand" type="sphere" size=".04" density="1865"/>
+                    <site name="LeftHand" class="touch" type="sphere" size=".041"/>
+                  </body>   <!-- LeftHand -->
+                </body>     <!-- LeftForeArm -->
+              </body>       <!-- LeftArm -->
+            </body>         <!-- LeftShoulder -->
+
             <body name="RightShoulder" pos="0.007056 -0.061057 0.091105">
               <joint name="right_shoulder_x" axis="1 0 0" range="-180 45" stiffness="400" damping="40" armature=".02"/>
               <joint name="right_shoulder_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
@@ -70,6 +99,7 @@
                 <joint name="right_arm_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
                 <joint name="right_arm_z" axis="0 0 1"  range="-90 90" stiffness="400" damping="40" armature=".02"/>
                 <geom name="RightArm" fromto="0 -0.05 0  0 -0.27 0" size=".03" density="982"/>
+                <site name="RightArm" class="touch" pos="0 0 -0.14" size="0.046 0.1" zaxis="0 0 1"/>
 
                 <body name="RightForeArm" pos="0.0 -0.274047 0.0">
                   <joint name="right_elbow" axis="0 1 0" range="-160 0" stiffness="300" damping="30" armature=".01"/>
@@ -87,33 +117,6 @@
               </body>       <!-- RightArm -->
             </body>         <!-- RightShoulder -->
 
-            <body name="LeftShoulder" pos="0.007056 0.061058 0.091104">
-              <joint name="left_shoulder_x" axis="1 0 0" range="-180 45" stiffness="400" damping="40" armature=".02"/>
-              <joint name="left_shoulder_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
-              <joint name="left_shoulder_z" axis="0 0 1"  range="-90 90" stiffness="400" damping="40" armature=".02"/>
-              <geom name="LeftShoulder" fromto="0 0.05 0 0 0.12 0" size=".03" density="982"/>
-              
-              <body name="LeftArm" pos="-0.026009 0.126550 -0.002659">
-                <joint name="left_arm_x" axis="1 0 0" range="-180 45" stiffness="400" damping="40" armature=".02"/>
-                <joint name="left_arm_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
-                <joint name="left_arm_z" axis="0 0 1"  range="-90 90" stiffness="400" damping="40" armature=".02"/>
-                <geom name="LeftArm" fromto="0 0.05 0  0 0.27 0" size=".03" density="982"/>
-
-                <body name="LeftForeArm" pos="0.0 0.274047 0.0">
-                  <joint name="left_elbow" axis="0 1 0" range="-160 0" stiffness="300" damping="30" armature=".01"/>
-                  <geom name="LeftForeArm" fromto="0 0.0525 0 0 0.20 0" size="0.03" density="1056"/>
-                  <site name="LeftForeArm" class="touch" pos="0 0 0.12" size="0.041 0.0685" zaxis="0 1 0"/>
-
-                  <body name="LeftHand" pos="0.0 0.276145 0.0">
-                    <joint name="left_hand_x" axis="1 0 0" range="-180 45" stiffness="400" damping="40" armature=".02"/>
-                    <joint name="left_hand_y" axis="0 1 0" range="-180 60" stiffness="400" damping="40" armature=".02"/>
-                    <joint name="left_hand_z" axis="0 0 1"  range="-90 90" stiffness="400" damping="40" armature=".02"/>
-                    <geom name="LeftHand" type="sphere" size=".04" density="1865"/>
-                    <site name="LeftHand" class="touch" type="sphere" size=".041"/>
-                  </body>   <!-- LeftHand -->
-                </body>     <!-- LeftForeArm -->
-              </body>       <!-- LeftArm -->
-            </body>         <!-- LeftShoulder -->
 
           </body>           <!-- Spine2 -->
         </body>             <!-- Spine1 -->
@@ -172,7 +175,7 @@
     </body>                 <!-- Hips -->
   </worldbody>
 
-  <!-- <actuator>
+  <actuator>
     <motor name='spine_x'       	gear='200' 	joint='spine_x'/>
     <motor name='spine_y'       	gear='200' 	joint='spine_y'/>
     <motor name='spine_z'       	gear='200' 	joint='spine_z'/>
@@ -236,7 +239,7 @@
     <motor name='left_ankle_x'    	gear='90' 	joint='left_ankle_x'/>
     <motor name='left_ankle_y'    	gear='90' 	joint='left_ankle_y'/>
     <motor name='left_ankle_z'    	gear='90' 	joint='left_ankle_z'/>
-  </actuator> -->
+  </actuator>
 
   <sensor>
     <subtreelinvel name="Hips_subtreelinvel" body="Hips"/>
@@ -244,7 +247,7 @@
     <velocimeter name="root_vel"        site="root"/>
     <gyro name="root_gyro"              site="root"/>
 
-    <!-- <force name="left_ankle_force"       site="LeftFoot"/>
+    <force name="left_ankle_force"       site="LeftFoot"/>
     <force name="right_ankle_force"      site="RightFoot"/>
     <force name="left_knee_force"        site="LeftLeg"/>
     <force name="right_knee_force"       site="RightLeg"/>
@@ -276,7 +279,7 @@
 
     <touch name="RightUpLeg_touch"      site="RightUpLeg"/>
     <touch name="RightLeg_touch"       site="RightLeg"/>
-    <touch name="RightFoot_touch"       site="RightFoot"/> -->
+    <touch name="RightFoot_touch"       site="RightFoot"/>
   </sensor>
 
 </mujoco>
