@@ -34,7 +34,7 @@ from torch import Tensor
 from isaacgym import gymapi
 from isaacgym import gymtorch
 
-from env.tasks.humanoid import Humanoid, dof_to_obs
+from env.tasks.humanoid import Humanoid, dof_to_obs, dof_to_local_rotation
 from utils import gym_util
 from utils.motion_lib import DeepMimicMotionLib
 from isaacgym.torch_utils import *
@@ -461,41 +461,6 @@ def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel
     obs = torch.cat((root_h_obs, local_body_pos, flat_local_rot, local_body_vel, local_body_ang_vel), dim=-1)
     return obs
 
-@torch.jit.script
-#! pose == dof_pos 즉, exp_map for each dof (12개 joint의 exp_map의 각 요소들 -> 3 * 8 + 1 * 4 = 28개)
-# almost same to dof_to_obs() function of Humanoid.py
-# dof (exp_map) -> local_rotation (quat)
-def dof_to_local_rotation(pose, body_local_rot_size, dof_offsets):
-    # type: (Tensor, int, List[int]) -> Tensor
-    local_rot_size = 4
-    num_joints = len(dof_offsets) - 1
-    num_body = 15
-
-    dof_obs_shape = pose.shape[:-1] + (body_local_rot_size,)           # [num_envs, body_local_rot_size (4 * 15)]
-    dof_obs = torch.zeros(dof_obs_shape, device=pose.device)
-    dof_obs_offset = 0
-
-    for j in range(num_joints):
-        dof_offset = dof_offsets[j]
-        dof_size = dof_offsets[j + 1] - dof_offsets[j]
-        joint_pose = pose[:, dof_offset:(dof_offset + dof_size)]
-
-        # assume this is a spherical joint
-        if (dof_size == 3):
-            joint_pose_q = torch_utils.exp_map_to_quat(joint_pose)
-        elif (dof_size == 1):
-            axis = torch.tensor([0.0, 1.0, 0.0], dtype=joint_pose.dtype, device=pose.device)
-            joint_pose_q = quat_from_angle_axis(joint_pose[..., 0], axis)
-        else:
-            joint_pose_q = None
-            assert(False), "Unsupported joint type"
-        
-        # joint_dof_obs = torch_utils.quat_to_tan_norm(joint_pose_q)
-        dof_obs[:, (j * local_rot_size):((j + 1) * local_rot_size)] = joint_pose_q
-
-    assert((num_body * local_rot_size) == body_local_rot_size)
-
-    return dof_obs
 
 @torch.jit.script
 def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
