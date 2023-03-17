@@ -122,7 +122,7 @@ class HumanoidDeepmm(Humanoid):
         self._reset_ref_env_ids = []
         
         # done_indices가 있는 것! -> humanoid state, terminate, progress buffer, motion_times 등등을 reset해줌
-        super()._reset_envs(env_ids)
+        super()._reset_envs(env_ids)    # _reset_actors -> _reset_env_tensors -> _refresh_sim_tensors -> _compute_observations
         #! compute reference observation
         if (len(env_ids)> 0):
             self._init_ref_obs(env_ids)
@@ -149,14 +149,6 @@ class HumanoidDeepmm(Humanoid):
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
             self._num_obs = 1 + 15 * (3 + 4 + 3 + 3)
-            
-        elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
-            self._dof_body_ids = [1, 2, 3, 4, 5, 7, 8, 11, 12, 13, 14, 15, 16]
-            self._dof_offsets = [0, 3, 6, 9, 10, 13, 16, 17, 20, 21, 24, 27, 28, 31]
-            self._dof_obs_size = 78
-            self._num_actions = 31
-            self._num_obs = 1 + 17 * (3 + 4 + 3 + 3) - 3
-
         else:
             print("Unsupported character config file: {s}".format(asset_file))
             assert(False)
@@ -170,7 +162,6 @@ class HumanoidDeepmm(Humanoid):
         else:
             print("3. reset된 env에 대해서 buffer에 ref_observation 값 넣어주기 : ", env_ids, "\n\n\n")
             self.ref_buf[env_ids] = ref_obs
-        
         return
     
     #! state 다시 initialize 해주는 코드!
