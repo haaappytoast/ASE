@@ -34,8 +34,7 @@ from torch import Tensor
 from isaacgym import gymapi
 from isaacgym import gymtorch
 
-from env.tasks.humanoid import Humanoid, dof_to_obs
-from env.tasks.humanoid_temp import dof_to_local_rotation
+from env.tasks.humanoid import Humanoid, dof_to_obs, compute_grot_from_lrot, dof_to_local_rotation
 from utils import gym_util
 from utils.motion_lib import DeepMimicMotionLib
 from isaacgym.torch_utils import *
@@ -81,9 +80,18 @@ class HumanoidTest(Humanoid):
         self.temp = 0
         return
 
+    # #for debug
     # def pre_physics_step(self, actions):
+    #     #! correct!
     #     root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
     #     = self._motion_lib.get_motion_state(self._motion_ids, self._motion_times)
+
+    #     global_rot = self._motion_lib._get_blended_global_rot(self._motion_ids, self._motion_times)
+    #     local_rot = self._motion_lib._get_blended_local_rot(self._motion_ids, self._motion_times)
+
+    #     calculated_grot = compute_grot_from_lrot(local_rot, self._parent_indices)
+    #     print("global_rot - calculated_grot: ", global_rot - calculated_grot) #! ALL SAME
+
     #     # reset humanoid state
     #     self._set_env_state(env_ids=self._env_ids, 
     #                         root_pos=root_pos, 
@@ -172,6 +180,8 @@ class HumanoidTest(Humanoid):
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
             self._num_obs = 1 + 15 * (3 + 4 + 3 + 3)
+
+            self._parent_indices = [-1,  0,  1,  1,  3,  4,  1,  6,  7,  0,  9, 10, 0, 12, 13]
 
         else:
             print("Unsupported character config file: {s}".format(asset_file))
@@ -263,9 +273,11 @@ class HumanoidTest(Humanoid):
             body_rot = self._rigid_body_rot[env_ids]            # [num_envs, 15, 4]
             body_vel = self._rigid_body_vel[env_ids]            # [num_envs, 15, 3]
             body_ang_vel = self._rigid_body_ang_vel[env_ids]    # [num_envs, 15, 3]
-            dof_pos = self._dof_pos[env_ids]
-            dof_vel = self._dof_vel[env_ids]
+            dof_pos = self._dof_pos[env_ids]                    # [num_envs, num_dof]
+            dof_vel = self._dof_vel[env_ids]                    # [num_envs, num_dof]
 
+        # print("dof_pos_to_lrot: ", dof_to_local_rotation(dof_pos, 60, self._dof_offsets))   # shape: [1, 60]
+        # print("dof_pos_to_lrot: ", compute_grot_from_lrot(dof_pos, 60, self._dof_offsets))
         obs = compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
                                                 self._root_height_obs, dof_pos)
         
@@ -408,10 +420,15 @@ def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel,
     
     _dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
     body_lrot = dof_to_local_rotation(dof_pos, 60, _dof_offsets)    # [num_envs, 60]
+    
 
     cuda = torch.device('cuda')
     body_lrot.to(cuda)
     
+    # global_rot = compute_grot_from_lrot(body_rot, )    
+
+    #! 여기서 부터 시작
+    #! global_rot -> 여기서 root에 relative하도록 만들어보기
 
     #! for experiment of using raw local rotation
     # shape: [1, 196] = 1 + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
@@ -499,7 +516,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     num_key_body = 4
     pose_w = 1
 
-    # get reference character's local_body_rot_obs
+    # get simulated character's local_body_rot_obs
     local_body_rot_obs = obs_buf[:, 46:106]          # [num_envs, 15 * 4]
     local_body_angvel_obs = obs_buf[:, 151:196]      # [num_envs, 15 * 4]
     # global_ee_pos = obs_buf[:, 46:106]
@@ -508,7 +525,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     local_body_angvel = local_body_angvel_obs.reshape(num_envs * num_rigid_body, -1)     # [num_envs * rigid_body, 3]
     #! check it again
 
-    # get simulated character's local_body_rot_obs
+    # get reference character's local_body_rot_obs
     ref_local_body_rot_obs = ref_buf[:, 0:60]          # [num_envs, 15 * 4]
     ref_local_body_angvel_obs = ref_buf[:, 60:105]     # [num_envs, 15 * 3]
     ref_global_ee_pos_obs = ref_buf[:, 105:117]        # [num_envs, 4  * 3]
@@ -526,7 +543,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     rot_diff_angle, rot_diff_axis = quat_angle_axis(body_rot_diff)  # [num_envs * 15], [num_envs * 15, 3]
 
     sum_rot_diff_angle = torch.sum(rot_diff_angle**2, dim=-1)
-    pose_reward = torch.exp(-2 * sum_rot_diff_angle)
+    pose_reward = torch.exp(-0.1 * sum_rot_diff_angle)
 
     reward = pose_w * pose_reward
 
