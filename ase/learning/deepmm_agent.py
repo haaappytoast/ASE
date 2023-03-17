@@ -154,9 +154,10 @@ class DeepmmAgent(common_agent.CommonAgent):
             
             if (self.vec_env.env.task.viewer):
                 # self._amp_debug(infos)
-                print("*"*20)
-                print("should debug")
-                print("*"*20)
+                # print("*"*20)
+                # print("should debug")
+                # print("*"*20)
+                pass
                 
             done_indices = done_indices[:, 0]
         mb_fdones = self.experience_buffer.tensor_dict['dones'].float()
