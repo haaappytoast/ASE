@@ -37,6 +37,7 @@ from isaacgym.torch_utils import *
 from utils import torch_utils
 
 from env.tasks.base_task import BaseTask
+from poselib.poselib.core import *
 
 class Humanoid(BaseTask):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
@@ -559,9 +560,65 @@ class Humanoid(BaseTask):
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
+@torch.jit.script
+#! 여기 고쳐야됌 -> parent가 node_index-1이 아닐 수 있음!
+def compute_grot_from_lrot(local_rot):  # shape: [num_envs, num_bodies, 4]
+    # type: (Tensor) -> Tensor
+
+    global_rot = quat_identity_like(local_rot).to("cuda")
+
+    for node_index in range(local_rot.shape[1]):    # body num
+        # root
+        if node_index == 0:
+            global_rot[..., node_index, :] = local_rot[..., node_index, :]
+        # node joints
+        else:
+            grot = quat_mul(global_rot[..., node_index-1, :], local_rot[..., node_index, :])
+            global_rot[..., node_index, :] = grot
+
+
+    return global_rot   # shape: [num_envs, 15, 4]
 
 @torch.jit.script
-#! pose: dof_pos 즉, exp_map for each dof (12개 joint의 exp_map의 각 요소들 -> 3 * 8 + 1 * 4 = 28개)
+#! pose == dof_pos 즉, exp_map for each dof (12개 joint의 exp_map의 각 요소들 -> 3 * 8 + 1 * 4 = 28개)
+# almost same to dof_to_obs() function of Humanoid.py
+# dof (exp_map) -> local_rotation (quat)
+
+def dof_to_local_rotation(pose, body_local_rot_size, dof_offsets):
+    # type: (Tensor, int, List[int]) -> Tensor
+    local_rot_size = 4
+    num_joints = len(dof_offsets) - 1
+    num_body = 15
+
+    dof_obs_shape = pose.shape[:-1] + (body_local_rot_size,)           # [num_envs, body_local_rot_size (4 * 15)]
+    dof_obs = torch.zeros(dof_obs_shape, device=pose.device)
+    dof_obs_offset = 0
+
+    for j in range(num_joints):
+        dof_offset = dof_offsets[j]
+        dof_size = dof_offsets[j + 1] - dof_offsets[j]
+        joint_pose = pose[:, dof_offset:(dof_offset + dof_size)]
+
+        # assume this is a spherical joint
+        if (dof_size == 3):
+            joint_pose_q = torch_utils.exp_map_to_quat(joint_pose)
+        elif (dof_size == 1):
+            axis = torch.tensor([0.0, 1.0, 0.0], dtype=joint_pose.dtype, device=pose.device)
+            joint_pose_q = quat_from_angle_axis(joint_pose[..., 0], axis)
+        else:
+            joint_pose_q = None
+            assert(False), "Unsupported joint type"
+        
+        # joint_dof_obs = torch_utils.quat_to_tan_norm(joint_pose_q)
+        dof_obs[:, (j * local_rot_size):((j + 1) * local_rot_size)] = joint_pose_q
+
+    assert((num_body * local_rot_size) == body_local_rot_size)
+
+    return dof_obs
+
+@torch.jit.script
+#! pose == dof_pos 즉, exp_map for each dof (12개 joint의 exp_map의 각 요소들 -> 3 * 8 + 1 * 4 = 28개)
+# dof (exp_map) -> local_rotation (quat)
 def dof_to_obs(pose, dof_obs_size, dof_offsets):
     # type: (Tensor, int, List[int]) -> Tensor
     joint_obs_size = 6
