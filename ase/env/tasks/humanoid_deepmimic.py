@@ -35,7 +35,6 @@ from isaacgym import gymapi
 from isaacgym import gymtorch
 
 from env.tasks.humanoid import Humanoid, dof_to_obs
-from env.tasks.double_humanoid import DoubleHumanoid
 from utils import gym_util
 from utils.motion_lib import DeepMimicMotionLib
 from isaacgym.torch_utils import *
@@ -82,8 +81,19 @@ class HumanoidDeepmimic(Humanoid):
 
         assert (self.num_envs - 1 > 0), 'kinematic model을 visualize하기 위해서는 num_envs > 1이어야 합니다.'
         self.set_char_color([0.85, 0.2, 0.54], [self.num_envs - 1])
-        return
 
+        self._ref_vis = True
+        return
+    def _physics_step(self):
+        for i in range(self.control_freq_inv):
+            self.render()
+            #! simulation forward for sim_params.dt
+            self.gym.simulate(self.sim)
+            if(self.progress_buf[0]==0):
+                # self.enable_viewer_sync = False
+                pass
+        return
+    
     def post_physics_step(self):
         self.progress_buf += 1
         self.ones = torch.ones(self._motion_times.shape).to(self.device)
@@ -105,6 +115,7 @@ class HumanoidDeepmimic(Humanoid):
         if self.viewer and self.debug_viz:
             self._update_debug_viz()
 
+        # set last env_ids to reference motion 
         self._motion_sync()
 
         return
@@ -113,10 +124,11 @@ class HumanoidDeepmimic(Humanoid):
         num_motions = self._motion_lib.num_motions()
         motion_ids = self._motion_ids
         motion_times = self.progress_buf * self.dt
-        env_ids = [self.num_envs-1]
-        print("motion times: ", motion_times[env_ids])
-        print("motion length: ", self._motion_lib.get_motion_length(motion_ids[env_ids]))
 
+        env_ids = [self.num_envs-1] # the last env_id
+
+        # print("motion times: ", motion_times[env_ids])
+        # print("motion length: ", self._motion_lib.get_motion_length(motion_ids[env_ids]))
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
            = self._motion_lib.get_motion_state(motion_ids[env_ids], motion_times[env_ids])
         
@@ -134,11 +146,9 @@ class HumanoidDeepmimic(Humanoid):
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
-
         # print("root_vel: ", self._root_states[:, 7:10])
         # print("root_ang_vel: ", self._root_states[:, 10:13])
         # print("dof_vel: ", self._dof_state[:, 1])
-
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self._root_states),
@@ -148,6 +158,14 @@ class HumanoidDeepmimic(Humanoid):
                                               gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
         return
 
+    def _init_camera(self):
+        self.gym.refresh_actor_root_state_tensor(self.sim)
+        self._cam_prev_char_pos = self._humanoid_root_states[0, 0:3].cpu().numpy()
+        
+        cam_pos = gymapi.Vec3(10.0, 10.0, 3.0)
+        cam_target = gymapi.Vec3(10.0, 15.0, 0.0)
+        self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+        return
 
     def _load_motion(self, motion_file):
         assert(self._dof_offsets[-1] == self.num_dof)
@@ -164,10 +182,23 @@ class HumanoidDeepmimic(Humanoid):
         self._reset_ref_env_ids = []
         
         # done_indices가 있는 것!
-        super()._reset_envs(env_ids)
+        super()._reset_envs(env_ids)    # _reset_actors -> _reset_env_tensors -> _refresh_sim_tensors -> _compute_observations
+        
+        # 마지막 env에서 reference motion의 time이 id:0 과 같아지게
+        self.set_ref_motion_sync_to_first_env()
+
+        # print(self.progress_buf, "//", self._motion_times)
         #! compute reference observation
         if (len(env_ids)> 0):
             self._init_ref_obs(env_ids)
+            # print("reset!", self.progress_buf, "//", self._motion_times)
+        return
+    
+    def set_ref_motion_sync_to_first_env(self):
+        self._motion_times[self.num_envs-1] = self._motion_times[0]
+        self.progress_buf[self.num_envs-1] = self.progress_buf[0]
+        self.reset_buf[self.num_envs-1] = self.reset_buf[0]
+        self._terminate_buf[self.num_envs-1] = self._terminate_buf[0]
         return
     
     def _reset_env_tensors(self, env_ids):
@@ -189,13 +220,7 @@ class HumanoidDeepmimic(Humanoid):
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
             self._num_obs = 1 + 15 * (3 + 4 + 3 + 3)
-            
-        elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
-            self._dof_body_ids = [1, 2, 3, 4, 5, 7, 8, 11, 12, 13, 14, 15, 16]
-            self._dof_offsets = [0, 3, 6, 9, 10, 13, 16, 17, 20, 21, 24, 27, 28, 31]
-            self._dof_obs_size = 78
-            self._num_actions = 31
-            self._num_obs = 1 + 17 * (3 + 4 + 3 + 3) - 3
+
 
         else:
             print("Unsupported character config file: {s}".format(asset_file))
@@ -209,8 +234,6 @@ class HumanoidDeepmimic(Humanoid):
             self.ref_buf[:] = ref_obs
         else:
             self.ref_buf[env_ids] = ref_obs
-
-        
         return
     
     #! state 다시 initialize 해주는 코드!
@@ -226,9 +249,10 @@ class HumanoidDeepmimic(Humanoid):
     def _reset_ref_state_init(self, env_ids):
         num_envs = env_ids.shape[0]
         motion_ids = self._motion_lib.sample_motions(num_envs)
-                
+        print("reset env_ids: ", env_ids)
         if (self._state_init == HumanoidDeepmimic.StateInit.Random):
             motion_times = self._motion_lib.sample_time(motion_ids)
+
         elif (self._state_init == HumanoidDeepmimic.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
@@ -255,6 +279,8 @@ class HumanoidDeepmimic(Humanoid):
             self._motion_times[:] = motion_times
         else:                        # 환경 여러 개일 때
             self._motion_times[env_ids] = motion_times
+
+
         return
 
     def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
