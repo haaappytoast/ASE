@@ -182,7 +182,7 @@ class AMPAgent(common_agent.CommonAgent):
         }
 
         with torch.no_grad():
-            res_dict = self.model(input_dict)
+            res_dict = self.model(input_dict)   #! ModelDeepmmContinuous.Network(net).forward()인 것!
             if self.has_central_value:
                 states = obs_dict['states']
                 input_dict = {
@@ -225,8 +225,9 @@ class AMPAgent(common_agent.CommonAgent):
         update_time_start = time.time()
         rnn_masks = batch_dict.get('rnn_masks', None)
         
-        self._update_amp_demos()    #! 새로운  [amp_batch_size x 1250]만큼 amp_obs_demo를 새롭게 buffer에 저장
+        self._update_amp_demos()    #! 새로운  [amp_batch_size x 1250]만큼 amp_obs_demo를 새롭게 buffer에 저장 (요건 discriminator를 위해!)
         num_obs_samples = batch_dict['amp_obs'].shape[0]    #! num_obs_samples = horizontal_length
+        #!humanoid_deepmm.py line 101: fetch_amp_obs_demo에서 만든 거
         amp_obs_demo = self._amp_obs_demo_buffer.sample(num_obs_samples)['amp_obs'] #!  demo_buffer에서 horizontal_length개 sample / amp_obs_demo size: [horizontal_length, 1250]
         batch_dict['amp_obs_demo'] = amp_obs_demo
 
@@ -235,9 +236,11 @@ class AMPAgent(common_agent.CommonAgent):
         else:
             batch_dict['amp_obs_replay'] = self._amp_replay_buffer.sample(num_obs_samples)['amp_obs']
 
-        self.set_train()
+        self.set_train()    #! a2c_network train시킴. -> actor, critic, disc_mlp 모두!
 
         self.curr_frames = batch_dict.pop('played_frames')
+        #! common_agent.py에서는 self.dataset에 obs 등등 다 저장해주고, 
+        #! deepmm_agent는 self.dataset.values_dict['amp_obs'] ['amp_obs_demo'] ['amp_obs_replay']에 저장해줌.
         self.prepare_dataset(batch_dict)
         self.algo_observer.after_steps()
 
@@ -249,11 +252,13 @@ class AMPAgent(common_agent.CommonAgent):
         if self.is_rnn:
             frames_mask_ratio = rnn_masks.sum().item() / (rnn_masks.nelement())
             print(frames_mask_ratio)
-
+        #! ase/data/train/rlg/ config.mini_epochs -> 6번 정책 업데이트 함.
         for _ in range(0, self.mini_epochs_num):    #! self.config['mini_epochs'] 
             ep_kls = []
-            for i in range(len(self.dataset)):
+            for i in range(len(self.dataset)):#! dataset은 4개 -> batch_size
                 #! training step!
+                #! in a2c_continuous.py -> calc_gradients() in this code
+                #! a_info, c_info, disc_info update 시켜줌. -> loss 등등
                 curr_train_info = self.train_actor_critic(self.dataset[i])  #! cal_gradient인데, 이 함수 안에서 batch_dict 중 amp_minibatch_size 만큼 train 시킴
                 
                 if self.schedule_type == 'legacy':  

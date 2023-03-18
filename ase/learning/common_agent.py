@@ -120,7 +120,7 @@ class CommonAgent(a2c_continuous.A2CAgent):
         total_time = 0
         rep_count = 0
         self.frame = 0
-        #! go to RLGPUEnv and get full_state['obs']
+        #! go to RLGPUEnv and get full_state["obs"]
         self.obs = self.env_reset()
         self.curr_frames = self.batch_size_envs
         
@@ -214,11 +214,11 @@ class CommonAgent(a2c_continuous.A2CAgent):
     def train_epoch(self):
         play_time_start = time.time()
         with torch.no_grad():
+            #! 여기서 experience 데이터 만들어줌 (horizon_length동안 정책 실행하여 샘플 생성)
             if self.is_rnn:
                 batch_dict = self.play_steps_rnn()
             else:
                 batch_dict = self.play_steps() 
-
         play_time_end = time.time()
         update_time_start = time.time()
         rnn_masks = batch_dict.get('rnn_masks', None)
@@ -279,35 +279,38 @@ class CommonAgent(a2c_continuous.A2CAgent):
         train_info['play_time'] = play_time
         train_info['update_time'] = update_time
         train_info['total_time'] = total_time
-        print("before: ", train_info.keys())
         self._record_train_batch_info(batch_dict, train_info)
-        print("after: ", train_info.keys())
         return train_info
 
+    #! experience해주는 코드
     def play_steps(self):
         self.set_eval()
         
         epinfos = []
         done_indices = []
-        update_list = self.update_list
+        update_list = self.update_list  # ['actions', 'neglogpacs', 'values', 'mus', 'sigmas']
 
         for n in range(self.horizon_length):
-            self.obs = self.env_reset(done_indices)
+            #! MimicEnv.reset -> VecTaskPythonWrapper.reset() -> Humanoid.reset() -> Humanoid*._reset_envs() -> _compute_observations() -> obs_buf에 obs 저장해줌
+            self.obs = self.env_reset(done_indices) #! go to common_agent.py
             self.experience_buffer.update_data('obses', n, self.obs['obs'])
 
             if self.use_action_masks:
                 masks = self.vec_env.get_action_masks()
                 res_dict = self.get_masked_action_values(self.obs, masks)
             else:
-                res_dict = self.get_action_values(self.obs)
+                res_dict = self.get_action_values(self.obs) #! go to a2c_common.py의 A2CBase
 
             for k in update_list:
-                self.experience_buffer.update_data(k, n, res_dict[k]) 
+                self.experience_buffer.update_data(k, n, res_dict[k])    #! experience buffer에 넣어준다!
 
             if self.has_central_value:
                 self.experience_buffer.update_data('states', n, self.obs['states'])
-
-            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])
+                
+            #! 여기서 model에서 explore한 actions으로 obs, reward, dones, infos 가져오기
+            #! go to run.py -> IVecEnv의 step으로 감 -> 
+            #! common_agent -> a2c_continuous -> a2c_common.py안의 A2CBase안에 env_step() 구현되어있음 -> baseTask.step()으로!
+            self.obs, rewards, self.dones, infos = self.env_step(res_dict['actions'])   #! reward <- humanoid.py의 _compute_reward()
             shaped_rewards = self.rewards_shaper(rewards)
             self.experience_buffer.update_data('rewards', n, shaped_rewards)
             self.experience_buffer.update_data('next_obses', n, self.obs['obs'])
@@ -424,7 +427,8 @@ class CommonAgent(a2c_continuous.A2CAgent):
             batch_dict['seq_length'] = self.seq_len
 
         with torch.cuda.amp.autocast(enabled=self.mixed_precision):
-            res_dict = self.model(batch_dict)
+            #! train STARTS here!!! -> 첫번째
+            res_dict = self.model(batch_dict)   #! -> 1. go to deepmm_models.py -> Network
             action_log_probs = res_dict['prev_neglogp']
             values = res_dict['values']
             entropy = res_dict['entropy']
