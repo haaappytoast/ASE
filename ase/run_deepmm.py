@@ -46,10 +46,6 @@ from learning import deepmm_players
 from learning import deepmm_models
 from learning import deepmm_network_builder
 
-from learning import amp_agent
-from learning import amp_players
-from learning import amp_models
-from learning import amp_network_builder
 
 
 args = None
