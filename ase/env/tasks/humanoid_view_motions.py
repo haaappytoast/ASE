@@ -37,7 +37,7 @@ class HumanoidViewMotions(Humanoid):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         control_freq_inv = cfg["env"]["controlFrequencyInv"]
         self._motion_dt = control_freq_inv * sim_params.dt  #! 1/30
-        cfg["env"]["controlFrequencyInv"] = 1               #? why??? -> by this one, self.dt = 1/60 으로 setting 됌.
+        # cfg["env"]["controlFrequencyInv"] = 1               #? why??? -> by this one, self.dt = 1/60 으로 setting 됌.
         cfg["env"]["pdControl"] = False
 
         super().__init__(cfg=cfg,
@@ -94,10 +94,6 @@ class HumanoidViewMotions(Humanoid):
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
-
-        # print("root_vel: ", self._root_states[:, 7:10])
-        # print("root_ang_vel: ", self._root_states[:, 10:13])
-        # print("dof_vel: ", self._dof_state[:, 1])
 
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_actor_root_state_tensor_indexed(self.sim,

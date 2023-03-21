@@ -201,7 +201,7 @@ class MotionLib():
         blend_exp = blend.unsqueeze(-1)
         key_pos = (1.0 - blend_exp) * key_pos0 + blend_exp * key_pos1
         
-        local_rot = torch_utils.slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
+        local_rot = torch_utils.slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))      # [num_envs, 15, 4]
         
         dof_pos = self._local_rotation_to_dof(local_rot)
 
@@ -407,23 +407,6 @@ class DeepMimicMotionLib(MotionLib):
 
         return phase
     
-    def get_motion_body_state(self, motion_ids, motion_times):
-        # return global body orn(Quat), body ang vel
-        motion_len = self._motion_lengths[motion_ids]       # sec, shape:      (1, num_envs)
-        num_frames = self._motion_num_frames[motion_ids]    # frame, shape:    (1, num_envs)
-        dt = self._motion_dt[motion_ids]                    # sec, shape:      (1, num_envs)
-
-        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)    # shape: (1, num_envs)
-
-        f0l = frame_idx0 + self.length_starts[motion_ids]
-        f1l = frame_idx1 + self.length_starts[motion_ids]
-        
-        body_orn = torch.zeros((len(motion_times), len(self.grs[0]), 4), dtype=torch.float32)
-        body_ang_vel = torch.zeros((len(motion_times), len(self.gavs[0]), 3), dtype=torch.float32)
-        blend = blend.unsqueeze(-1)
-        for j in range(self._get_num_bodies()):
-            body_orn[:, j] = torch_utils.slerp(self.grs[f0l,j], self.grs[f1l,j], blend)
-            body_ang_vel[:, j] = (1.0 - blend) * self.gavs[f0l,j] + blend * self.gavs[f1l, j]
         
 
         return body_orn, body_ang_vel
@@ -470,14 +453,18 @@ class DeepMimicMotionLib(MotionLib):
             assert v.dtype != torch.float64
 
         blend = blend.unsqueeze(-1)
+        # if (blend.shape[0] > 1):g
+        #     blend = blend.unsqueeze(-2)
+        #     blend = blend.repeat((1, local_rot0.shape[1], 1))   # shape: [2, 15, 1]
 
-        if (blend.shape[0] > 1):
-            blend = blend.unsqueeze(-2)
-            blend = blend.repeat((1, local_rot0.shape[1], 1))   # shape: [2, 15, 1]
-
-        blended_local_rot = torch_utils.slerp(local_rot0, local_rot1, blend)
-
-        return blended_local_rot    # [1, num_bodies, 4]
+        local_dof = []
+        for i in range(local_rot0.shape[0]):
+            blended_local_rot = torch_utils.slerp(local_rot0[i, :, :].unsqueeze(0), local_rot1[i, :, :].unsqueeze(0), blend[i, :].unsqueeze(0))
+            dof_pos = self._local_rotation_to_dof(blended_local_rot)
+            local_dof.append(dof_pos)
+        
+        blended_local_rots = torch.vstack(local_dof)
+        return blended_local_rots    # [1, num_joints * 4]
     
     def _get_jnt_local_angvel(self, motion_ids, motion_times):
         motion_len = self._motion_lengths[motion_ids]       
@@ -574,5 +561,76 @@ class DeepMimicMotionLib(MotionLib):
         local_body_angvel = self._get_body_local_angvel(motion_ids, motion_times)
         global_ee_pos = self._get_ee_world_position(motion_ids, motion_times)
         return local_body_rot, local_body_angvel, global_ee_pos
-    
 
+    def _get_blended_global_rot(self, motion_ids, motion_times):
+        n = len(motion_ids)
+        num_bodies = self._get_num_bodies()
+        num_key_bodies = self._key_body_ids.shape[0]
+
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+        # frame_idx0 = torch.tensor([0]).to(device=0)
+        # frame_idx1 = torch.tensor([0]).to(device=0)
+        # blend = torch.Tensor([0.0]).to(device=0)
+        # print("after // frame_idx0", frame_idx0.item(),", frame_idx1: ", frame_idx1.item(), ",blend: ", blend.item())
+        
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+
+        global_rot0 = self.grs[f0l]
+        global_rot1 = self.grs[f1l]
+
+        
+        vals = [global_rot0, global_rot1]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+
+        blend = blend.unsqueeze(-1)
+
+
+        blend_exp = blend.unsqueeze(-1)
+        
+        global_rot = torch_utils.slerp(global_rot0, global_rot1, torch.unsqueeze(blend, axis=-1))
+        
+
+        return global_rot
+    
+    def _get_blended_local_rot(self, motion_ids, motion_times):
+        n = len(motion_ids)
+        num_bodies = self._get_num_bodies()
+        num_key_bodies = self._key_body_ids.shape[0]
+
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+        # frame_idx0 = torch.tensor([0]).to(device=0)
+        # frame_idx1 = torch.tensor([0]).to(device=0)
+        # blend = torch.Tensor([0.0]).to(device=0)
+        # print("after // frame_idx0", frame_idx0.item(),", frame_idx1: ", frame_idx1.item(), ",blend: ", blend.item())
+        
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+
+        
+        local_rot0 = self.lrs[f0l]
+        local_rot1 = self.lrs[f1l]
+
+        
+        vals = [local_rot0, local_rot1]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+
+        blend = blend.unsqueeze(-1)
+        
+        local_rot = torch_utils.slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
+        
+
+        return local_rot
+    

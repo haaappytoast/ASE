@@ -455,12 +455,13 @@ class Humanoid(BaseTask):
         self._humanoid_root_states[env_ids] = self._initial_humanoid_root_states[env_ids]
         self._dof_pos[env_ids] = self._initial_dof_pos[env_ids]
         self._dof_vel[env_ids] = self._initial_dof_vel[env_ids]
+
         return
 
     def pre_physics_step(self, actions):
         self.actions = actions.to(self.device).clone()
         if (self._pd_control):
-            pd_tar = self._action_to_pd_targets(self.actions)
+            pd_tar = self._action_to_pd_targets(self.actions)   # shape: [1, 28]
             pd_tar_tensor = gymtorch.unwrap_tensor(pd_tar)
             self.gym.set_dof_position_target_tensor(self.sim, pd_tar_tensor)
         else:
@@ -562,8 +563,8 @@ class Humanoid(BaseTask):
 #####################################################################
 @torch.jit.script
 #! 여기 고쳐야됌 -> parent가 node_index-1이 아닐 수 있음!
-def compute_grot_from_lrot(local_rot):  # shape: [num_envs, num_bodies, 4]
-    # type: (Tensor) -> Tensor
+def compute_grot_from_lrot(local_rot, parent_indices):  # shape: [num_envs, num_bodies, 4]
+    # type: (Tensor, List[int]) -> Tensor
 
     global_rot = quat_identity_like(local_rot).to("cuda")
 
@@ -573,22 +574,44 @@ def compute_grot_from_lrot(local_rot):  # shape: [num_envs, num_bodies, 4]
             global_rot[..., node_index, :] = local_rot[..., node_index, :]
         # node joints
         else:
-            grot = quat_mul(global_rot[..., node_index-1, :], local_rot[..., node_index, :])
+            parent_idx = parent_indices[node_index]
+            print("parent_idx: ", parent_idx)
+            assert(parent_idx < node_index), "parent_index should be less than child index"
+            grot = quat_mul(global_rot[..., parent_idx, :], local_rot[..., node_index, :])
             global_rot[..., node_index, :] = grot
 
 
     return global_rot   # shape: [num_envs, 15, 4]
 
+# @torch.jit.script
+# def compute_lrot_from_grot(body_rot, parent_indices):  # shape: [num_envs, num_bodies, 4]
+#     # type: (Tensor, List[int]) -> Tensor
+
+#     global_rot = quat_identity_like(local_rot).to("cuda")
+
+#     for node_index in range(local_rot.shape[1]):    # body num
+#         # root
+#         if node_index == 0:
+#             global_rot[..., node_index, :] = local_rot[..., node_index, :]
+#         # node joints
+#         else:
+#             parent_idx = parent_indices[node_index]
+#             print("parent_idx: ", parent_idx)
+#             assert(parent_idx < node_index), "parent_index should be less than child index"
+#             grot = quat_mul(global_rot[..., parent_idx, :], local_rot[..., node_index, :])
+#             global_rot[..., node_index, :] = grot
+
+
+#     return global_rot   # shape: [num_envs, 15, 4]
+
 @torch.jit.script
 #! pose == dof_pos 즉, exp_map for each dof (12개 joint의 exp_map의 각 요소들 -> 3 * 8 + 1 * 4 = 28개)
 # almost same to dof_to_obs() function of Humanoid.py
 # dof (exp_map) -> local_rotation (quat)
-
 def dof_to_local_rotation(pose, body_local_rot_size, dof_offsets):
     # type: (Tensor, int, List[int]) -> Tensor
     local_rot_size = 4
     num_joints = len(dof_offsets) - 1
-    num_body = 15
 
     dof_obs_shape = pose.shape[:-1] + (body_local_rot_size,)           # [num_envs, body_local_rot_size (4 * 15)]
     dof_obs = torch.zeros(dof_obs_shape, device=pose.device)
@@ -612,9 +635,9 @@ def dof_to_local_rotation(pose, body_local_rot_size, dof_offsets):
         # joint_dof_obs = torch_utils.quat_to_tan_norm(joint_pose_q)
         dof_obs[:, (j * local_rot_size):((j + 1) * local_rot_size)] = joint_pose_q
 
-    assert((num_body * local_rot_size) == body_local_rot_size)
+    assert((num_joints * local_rot_size) == body_local_rot_size)
 
-    return dof_obs
+    return dof_obs  # # [num_envs, body_local_rot_size (4 * 15)]
 
 @torch.jit.script
 #! pose == dof_pos 즉, exp_map for each dof (12개 joint의 exp_map의 각 요소들 -> 3 * 8 + 1 * 4 = 28개)

@@ -29,9 +29,9 @@
 #!! should be always changed
 from env.tasks.humanoid_deepmm import HumanoidDeepmm
 from env.tasks.humanoid_test import HumanoidTest
+from env.tasks.humanoid_rot import HumanoidRot
+from env.tasks.humanoid_temp import HumanoidCompareSimRefDof
 from env.tasks.humanoid_deepmimic import HumanoidDeepmimic
-from env.tasks.double_humanoid import DoubleHumanoid
-# from env.tasks.humanoid_deepmimic import HumanoidDeepMimic
 from env.tasks.humanoid_view_motions import HumanoidViewMotions
 
 from env.tasks.humanoid import Humanoid
