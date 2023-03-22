@@ -291,9 +291,6 @@ class HumanoidTest(Humanoid):
         else:
             local_dof, local_body_angvel, global_ee_pos \
                 = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
-            # print("-"*10, " reset envs ", "-"*10)
-            # print("self._reset_ref_motion_times: ", self._reset_ref_motion_times)
-            # print("-"*10)
 
         local_lrot = dof_to_local_rotation(local_dof, (len(self._dof_offsets) - 1) * 4, dof_offsets=self._dof_offsets)
         
@@ -311,14 +308,12 @@ class HumanoidTest(Humanoid):
         return ref_obs
 
     def _compute_reward(self, actions):
-        #! start here!
         obs = self.obs_buf              # shape: [num_envs, 196]
         ref_obs = self.ref_buf          # shape: [num_envs, 117]
         # print("*" * 10)
         # print("ref_obs: ", ref_obs[:, 0:60])
         # print("*" * 10, "\n\n\n\n")
-
-        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, self._motion_times)
+        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, self._motion_times, len(self._dof_offsets)-1)
         return
 
 #####################################################################
@@ -381,44 +376,37 @@ def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel,
     
     cuda = torch.device('cuda')
     body_lrot.to(cuda)
-
     obs = torch.cat(([body_lrot]), dim=-1)
     return obs
 
 
 @torch.jit.script
-def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
-    # type: (Tensor, Tensor, Tensor) -> Tensor
-    # print("****************")
-    # print("ref_buf: \n", ref_buf)
-    # print("motion_times: ", motion_times)
-    # print("****************")
-    # pose reward
+def compute_deepmm_reward(obs_buf, ref_buf, motion_times, num_joints):
+    # type: (Tensor, Tensor, Tensor, int) -> Tensor
     num_envs = obs_buf.shape[0]
-    num_joints = 12
     num_key_body = 4
     pose_w = 1
 
     # get simulated character's local_body_rot_obs
     local_dof_obs = obs_buf          # [num_envs, 12 * 4]
 
-    local_dof = local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs * rigid_body, 4]
+    local_dof = local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs * num_joints, 4]
 
     # get reference character's local_dof_obs
     ref_local_dof_obs = ref_buf[:, 0:48]          # [num_envs, 12 * 4]
     
-    ref_local_dof = ref_local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs, rigid_body, 4]
+    ref_local_dof = ref_local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs, num_joints, 4]
     
     # get quaternion difference
     inv_local_dof = quat_inverse(local_dof)
     dof_diff = quat_mul_norm(inv_local_dof, ref_local_dof)    
 
     # get scalar rotation of a quaternion about its axis in radians 
-    rot_diff_angle, rot_diff_axis = quat_angle_axis(dof_diff)  # [num_envs * 15], [num_envs * 15, 3]
+    rot_diff_angle, rot_diff_axis = quat_angle_axis(dof_diff)                      # [num_envs * 12], [num_envs * 12, 3]
+    flat_rot_diff_angle = rot_diff_angle.reshape(num_envs, -1)
 
-    sum_rot_diff_angle = torch.sum(rot_diff_angle**2, dim=-1)
-    pose_reward = torch.exp(-2 * sum_rot_diff_angle)
+    sum_rot_diff_angle = torch.sum(flat_rot_diff_angle**2, dim=-1)
 
+    pose_reward = torch.exp(-1 * sum_rot_diff_angle)
     reward = pose_w * pose_reward
-
     return reward
