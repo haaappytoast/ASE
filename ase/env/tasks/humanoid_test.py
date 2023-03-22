@@ -212,7 +212,7 @@ class HumanoidTest(Humanoid):
         motion_ids = self._motion_lib.sample_motions(num_envs)
                 
         if (self._state_init == HumanoidTest.StateInit.Random):
-            motion_times = self._motion_lib.sample_time(motion_ids)
+            motion_times = self._motion_lib.sample_time(motion_ids, self.max_episode_length, self.dt)
         elif (self._state_init == HumanoidTest.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
@@ -279,19 +279,12 @@ class HumanoidTest(Humanoid):
         # print("dof_pos_to_lrot: ", compute_grot_from_lrot(dof_pos, 60, self._dof_offsets))
         obs = compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
                                                 self._root_height_obs, dof_pos)
-        
-        # obs = compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
-        #                                         self._root_height_obs)
         return obs
 
     # 여기서 motion_times랑 motion_ids reset된 걸로 해야되는 건가? -> 확인해보기
     def _compute_ref_obs(self, env_ids=None):
         # post_physics_step에서 compute_ref_observation() 불렀을 때
         if (env_ids is None):
-            # print("-"*10, "2-1. envs_ids is none!")
-            # print("self._motion_times: ", self._motion_times)
-            # print("-"*10)
-
             local_dof, local_body_angvel, global_ee_pos \
                 = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
 
@@ -301,7 +294,8 @@ class HumanoidTest(Humanoid):
             # print("-"*10, " reset envs ", "-"*10)
             # print("self._reset_ref_motion_times: ", self._reset_ref_motion_times)
             # print("-"*10)
-        local_lrot = dof_to_local_rotation(local_dof, 48, dof_offsets=self._dof_offsets)
+
+        local_lrot = dof_to_local_rotation(local_dof, (len(self._dof_offsets) - 1) * 4, dof_offsets=self._dof_offsets)
         
         flat_local_body_angvel = local_body_angvel.reshape(local_body_angvel.size(0), local_body_angvel.size(1) * local_body_angvel.size(2))  #! 확인 필요  # [num_envs, 15 * 3]
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
@@ -391,70 +385,6 @@ def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel,
     obs = torch.cat(([body_lrot]), dim=-1)
     return obs
 
-@torch.jit.script
-def compute_humanoid_raw_observations(body_pos, body_rot, body_vel, body_ang_vel, local_root_obs, root_height_obs):
-    # type: (Tensor, Tensor, Tensor, Tensor, bool, bool) -> Tensor
-    root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
-    root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
-    root_h = root_pos[:, 2:3]       # get z-value
-    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)
-    if (not root_height_obs):
-        root_h_obs = torch.zeros_like(root_h)
-    else:
-        root_h_obs = root_h
-    
-    heading_rot_expand = heading_rot.unsqueeze(-2)
-    heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
-    flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
-                                                    heading_rot_expand.shape[2])        # shrink shape: [1, 15, 4] -> [15, 4]
-    
-    root_pos_expand = root_pos.unsqueeze(-2)            # shape: [1, 1, 3]
-    local_body_pos = body_pos - root_pos_expand         #! root_relative_position / shape: [1, 15, 3] / 15: num_body
-    flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])    # shrink shape: [15, 3]/ 15: num_body
-    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! root의 local x-axis에서 바라본 root_relative_position of link / shape: [1, 15, 3]
-    local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])    # [1, 15 * 3]
-    # local_body_pos = local_body_pos[..., 3:] # remove root pos
-
-    flat_body_rot = body_rot.reshape(body_rot.shape[0] * body_rot.shape[1], body_rot.shape[2])  # shape: [15, 4]
-    flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [15 * num_envs, 4]
-    local_body_rot_obs = flat_local_body_rot.reshape(body_rot.shape[0], body_rot.shape[1] * flat_local_body_rot.shape[1])   #shape: [1, 15 * 4]
-    
-    #? 어 그럼 false면 이 안에 들어가는 값은 뭐지?
-    if (local_root_obs):
-        local_body_rot_obs[..., 0:4] = root_rot
-
-    flat_body_vel = body_vel.reshape(body_vel.shape[0] * body_vel.shape[1], body_vel.shape[2])  # torch.Size([15, 3])
-    flat_local_body_vel = quat_rotate(flat_heading_rot, flat_body_vel)                          #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
-    local_body_vel = flat_local_body_vel.reshape(body_vel.shape[0], body_vel.shape[1] * body_vel.shape[2])  # torch.Size([1, 15 * 3])
-    
-    flat_body_ang_vel = body_ang_vel.reshape(body_ang_vel.shape[0] * body_ang_vel.shape[1], body_ang_vel.shape[2])   # torch.Size([15, 3])
-    flat_local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel)                                       #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
-    local_body_ang_vel = flat_local_body_ang_vel.reshape(body_ang_vel.shape[0], body_ang_vel.shape[1] * body_ang_vel.shape[2])   # torch.Size([1, 15 * 3])
-    
-    local_rot = quat_identity_like(body_rot).to('cuda')        # shape: [num_envs, 15, 4] every element: (0, 0, 0, 1)
-    #!! should add phase variable to observation
-    for node_index in range(local_rot.shape[1]):    # body num
-        # root
-        if node_index == 0:
-            local_rot[..., node_index, :] = body_rot[..., node_index, :]
-        # node joints
-        else:
-            local_rot[..., node_index, :] = quat_mul_norm(quat_inverse(body_rot[..., node_index-1, :]), body_rot[..., node_index, :])
-
-    
-    cuda = torch.device('cuda')
-    local_rot.to(cuda)
-    
-    flat_local_rot = local_rot.reshape(local_rot.shape[0], local_rot.shape[1] * local_rot.shape[2]).to("cuda")     # shape: [num_envs, 15 * 4]
-
-    #! for experiment of using raw local rotation
-    # shape: [1, 196] = 1 + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
-    #                0           1 : 46          46 : 106            106 : 151       151 : 196 (-1)                     
-    # obs = torch.cat((root_h_obs, local_body_pos, local_body_rot_obs, local_body_vel, local_body_ang_vel), dim=-1)
-    #                0           1 : 46          46 : 106            106 : 151       151 : 196 (-1)                     
-    obs = torch.cat((root_h_obs, local_body_pos, flat_local_rot, local_body_vel, local_body_ang_vel), dim=-1)
-    return obs
-
 
 @torch.jit.script
 def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
@@ -477,12 +407,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times):
     # get reference character's local_dof_obs
     ref_local_dof_obs = ref_buf[:, 0:48]          # [num_envs, 12 * 4]
     
-    ref_local_body_angvel_obs = ref_buf[:, 60:105]     # [num_envs, 15 * 3]
-    ref_global_ee_pos_obs = ref_buf[:, 105:117]        # [num_envs, 4  * 3]
-
     ref_local_dof = ref_local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs, rigid_body, 4]
-    ref_local_body_angvel = ref_local_body_angvel_obs.reshape(num_envs * num_joints, -1)     # [num_envs, rigid_body, 3]
-    ref_global_ee_pos = ref_global_ee_pos_obs.reshape(num_envs * num_key_body, -1)               # [num_envs, rigid_body, 3]
     
     # get quaternion difference
     inv_local_dof = quat_inverse(local_dof)
