@@ -138,13 +138,14 @@ class MotionLib():
     def sample_time(self, motion_ids, truncate_time=None):
         n = len(motion_ids)
         phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
-        
         motion_len = self._motion_lengths[motion_ids]
+
+        truncate_time = 3
         if (truncate_time is not None):
             assert(truncate_time >= 0.0)
             motion_len -= truncate_time
-
         motion_time = phase * motion_len    # shape: [num_samples]
+
         return motion_time
 
     def get_motion_length(self, motion_ids):
@@ -398,6 +399,24 @@ class DeepMimicMotionLib(MotionLib):
         motions = self._motions
         self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
+    
+    def sample_time(self, motion_ids, max_episode_length=None, dt=None):
+        n = len(motion_ids)
+        phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
+        motion_len = self._motion_lengths[motion_ids]
+
+
+        motion_time = phase * motion_len    # shape: [num_samples]
+
+        trunc_motion_time = []
+        if max_episode_length is not None: 
+            for i, element in enumerate(motion_time):
+                if element > (motion_len[i] - max_episode_length * dt):
+                    trunc_motion_time.append((motion_len[i] - max_episode_length * dt).item())
+                else:
+                    trunc_motion_time.append(element.item())
+
+        return torch.tensor(trunc_motion_time).to(device=self._device)
 
     def _calc_phase(self, motion_ids, motion_times):
         motion_len = self._motion_lengths[motion_ids]       
@@ -444,6 +463,7 @@ class DeepMimicMotionLib(MotionLib):
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
         f0l = frame_idx0 + self.length_starts[motion_ids]
         f1l = frame_idx1 + self.length_starts[motion_ids]
+
         
         local_rot0 = self.lrs[f0l]  # (num_envs, rigid_body_size, 4)
         local_rot1 = self.lrs[f1l]
