@@ -58,6 +58,7 @@ class HumanoidTest(Humanoid):
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
         
+
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
                          physics_engine=physics_engine,
@@ -76,8 +77,10 @@ class HumanoidTest(Humanoid):
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
 
-        self.temp = 0
-        return
+        self.horizontal_length = 32
+        self._reset_num = 0
+        self.is_train = self.cfg["args"].train
+        return  
 
     # #for debug
     # def pre_physics_step(self, actions):
@@ -102,7 +105,6 @@ class HumanoidTest(Humanoid):
     #     return
     
     def post_physics_step(self):
-
         # debug for reference motion
         # print("*"*10, "2. post physics step", "*"*10)
         # print("self._motion_times: ", self._motion_times)
@@ -148,6 +150,8 @@ class HumanoidTest(Humanoid):
     
     # humanoid.py의 self.reset에서 실행이 되는데 이 때, env_ids를 tensor로 바꿔주는 코드가 들어있음
     def _reset_envs(self, env_ids):
+        self._reset_num += 1
+
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
         
@@ -212,7 +216,8 @@ class HumanoidTest(Humanoid):
         motion_ids = self._motion_lib.sample_motions(num_envs)
                 
         if (self._state_init == HumanoidTest.StateInit.Random):
-            motion_times = self._motion_lib.sample_time(motion_ids, self.max_episode_length, self.dt)
+            train_epoch = int(self._reset_num/self.horizontal_length)
+            motion_times = self._motion_lib.sample_time(motion_ids, self.cfg["env"]["episodeLength"], self.dt, train_epoch, self.is_train)
         elif (self._state_init == HumanoidTest.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:

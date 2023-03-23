@@ -400,7 +400,7 @@ class DeepMimicMotionLib(MotionLib):
         self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
     
-    def sample_time(self, motion_ids, max_episode_length=None, dt=None):
+    def sample_time(self, motion_ids, max_episode_length, dt=None, train_epoch=None, is_train=True):
         n = len(motion_ids)
         phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
         motion_len = self._motion_lengths[motion_ids]
@@ -408,14 +408,21 @@ class DeepMimicMotionLib(MotionLib):
 
         motion_time = phase * motion_len    # shape: [num_samples]
 
+        # train이면,
+        if is_train:
+            # train이고 epoch이 1000 이하 일 때
+            if train_epoch < 1000:
+                max_episode_length = 60
+
         trunc_motion_time = []
-        if max_episode_length is not None: 
+        if is_train: 
             for i, element in enumerate(motion_time):
                 if element > (motion_len[i] - max_episode_length * dt):
                     trunc_motion_time.append((motion_len[i] - max_episode_length * dt).item())
                 else:
                     trunc_motion_time.append(element.item())
-
+        else:
+            trunc_motion_time = motion_time
         return torch.tensor(trunc_motion_time).to(device=self._device)
 
     def _calc_phase(self, motion_ids, motion_times):
