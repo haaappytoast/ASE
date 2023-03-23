@@ -404,26 +404,23 @@ class DeepMimicMotionLib(MotionLib):
         n = len(motion_ids)
         phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
         motion_len = self._motion_lengths[motion_ids]
+        motion_num_frames = self._motion_num_frames[motion_ids]
 
-
+        # resampling motion_time for env which is over max_episode_length
+        boundary = (motion_num_frames - max_episode_length) * dt
         motion_time = phase * motion_len    # shape: [num_samples]
+        
+        overred = boundary < motion_time
+        env_overred = torch.where(overred == True)
 
-        # train이면,
-        if is_train:
-            # train이고 epoch이 1000 이하 일 때
-            if train_epoch < 1000:
-                max_episode_length = 60
 
-        trunc_motion_time = []
-        if is_train: 
-            for i, element in enumerate(motion_time):
-                if element > (motion_len[i] - max_episode_length * dt):
-                    trunc_motion_time.append((motion_len[i] - max_episode_length * dt).item())
-                else:
-                    trunc_motion_time.append(element.item())
+        if (phase[env_overred].shape[0] == 0):
+            pass
         else:
-            trunc_motion_time = motion_time
-        return torch.tensor(trunc_motion_time).to(device=self._device)
+            new_motion_time = torch.mul(phase[env_overred], boundary[env_overred])
+            motion_time[env_overred] = new_motion_time
+
+        return motion_time
 
     def _calc_phase(self, motion_ids, motion_times):
         motion_len = self._motion_lengths[motion_ids]       
