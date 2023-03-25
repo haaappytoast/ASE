@@ -582,11 +582,40 @@ class DeepMimicMotionLib(MotionLib):
         
         return key_pos # [1, num_key_bodies, 3]
 
+    def get_global_root(self, motion_ids, motion_times):
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+        
+        root_idx = torch.tensor([0])
+        root_pos0 = self.gts[f0l.unsqueeze(-1), root_idx.unsqueeze(0)]   # [1, 1, 3]
+        root_pos1 = self.gts[f1l.unsqueeze(-1), root_idx.unsqueeze(0)]   # [1, 1, 3]
+
+        vals = [root_pos0, root_pos1]
+        for v in vals:
+            assert v.dtype != torch.float64
+        
+        blend_exp = blend.unsqueeze(-1)
+        if (blend.shape[0] > 1):
+            blend_exp_expand = blend_exp.unsqueeze(-1)
+            root_pos = (1.0 - blend_exp_expand) * root_pos0 + blend_exp_expand * root_pos1
+        else:
+            root_pos = (1.0 - blend_exp) * root_pos0 + blend_exp * root_pos1
+        
+        return root_pos
+    
     def get_motion_state_for_reference(self, motion_ids, motion_times):
         local_body_rot = self._get_dof_local_quat(motion_ids, motion_times)
         local_body_angvel = self._get_body_local_angvel(motion_ids, motion_times)
         global_ee_pos = self._get_ee_world_position(motion_ids, motion_times)
-        return local_body_rot, local_body_angvel, global_ee_pos
+        global_root = self.get_global_root(motion_ids, motion_times)
+
+        return local_body_rot, local_body_angvel, global_ee_pos, global_root
 
     def _get_blended_global_rot(self, motion_ids, motion_times):
         n = len(motion_ids)

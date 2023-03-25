@@ -71,7 +71,7 @@ class HumanoidTest(Humanoid):
         self._motion_ids = torch.zeros(self.num_envs, device=self.device, dtype=torch.int64)
         self._motion_times = torch.zeros(self.num_envs, device=self.device)
 
-        self.num_ref_obs = 105
+        self.num_ref_obs = 108
         self.ref_buf = torch.zeros((self.num_envs, self.num_ref_obs), device=self.device, dtype=torch.float)
         
         motion_file = cfg['env']['motion_file']
@@ -82,43 +82,12 @@ class HumanoidTest(Humanoid):
         self.is_train = self.cfg["args"].train
         return  
 
-    # #for debug
-    # def pre_physics_step(self, actions):
-    #     #! correct!
-    #     root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
-    #     = self._motion_lib.get_motion_state(self._motion_ids, self._motion_times)
-
-    #     global_rot = self._motion_lib._get_blended_global_rot(self._motion_ids, self._motion_times)
-    #     local_rot = self._motion_lib._get_blended_local_rot(self._motion_ids, self._motion_times)
-
-    #     calculated_grot = compute_grot_from_lrot(local_rot, self._parent_indices)
-    #     print("global_rot - calculated_grot: ", global_rot - calculated_grot) #! ALL SAME
-
-    #     # reset humanoid state
-    #     self._set_env_state(env_ids=self._env_ids, 
-    #                         root_pos=root_pos, 
-    #                         root_rot=root_rot, 
-    #                         dof_pos=dof_pos, 
-    #                         root_vel=root_vel, 
-    #                         root_ang_vel=root_ang_vel, 
-    #                         dof_vel=dof_vel)
-    #     return
     
     def post_physics_step(self):
-        # debug for reference motion
-        # print("*"*10, "2. post physics step", "*"*10)
-        # print("self._motion_times: ", self._motion_times)
-        # print("self._rigid_body_rot[env_ids]: \n", self._rigid_body_rot[self._env_ids])
-        # print("\n\nglobal_quat: \n", global_quat)
-        # print("*"*10, "\n\n")
 
         self.progress_buf += 1
         self.ones = torch.ones(self._motion_times.shape).to(self.device)
         self._motion_times += self.ones * self.dt
-        # print("*"*10, "2. post physics step", "*"*10)
-        # print(self._motion_times)
-        # print("*"*10, "\n\n")
-        # self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, -1)
 
         self._refresh_sim_tensors()
         self._compute_observations()
@@ -182,7 +151,7 @@ class HumanoidTest(Humanoid):
             self._dof_obs_size = 72     #! 6 (joint_obs_size) * 12 (num_joints)
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
-            self._num_obs = 48
+            self._num_obs = 94
 
             self._parent_indices = [-1,  0,  1,  1,  3,  4,  1,  6,  7,  0,  9, 10, 0, 12, 13]
 
@@ -225,7 +194,7 @@ class HumanoidTest(Humanoid):
         
         # root_pos.shape:  torch.Size([1, 3], [1, 4], [1, 28], [1, 3], [1, 4, 3] )
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
-               = self._motion_lib.get_motion_state(motion_ids, motion_times) 
+                = self._motion_lib.get_motion_state(motion_ids, motion_times) 
 
         # reset humanoid state
         self._set_env_state(env_ids=env_ids, 
@@ -245,12 +214,6 @@ class HumanoidTest(Humanoid):
             self._motion_times[:] = motion_times
         else:                        # 환경 여러 개일 때
             self._motion_times[env_ids] = motion_times
-        
-        # print("*"*10, "1. reset_ref_state_init", "*"*10)
-        # print("self._motion_times[env_ids]: ", self._reset_ref_motion_ids)
-        # print("reset env_ids: ", env_ids)
-        # print("*"*10)        
-        
         return
 
     def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
@@ -261,7 +224,6 @@ class HumanoidTest(Humanoid):
         
         self._dof_pos[env_ids] = dof_pos
         self._dof_vel[env_ids] = dof_vel
-        
         return
     
     def _compute_humanoid_obs(self, env_ids=None):
@@ -290,34 +252,27 @@ class HumanoidTest(Humanoid):
     def _compute_ref_obs(self, env_ids=None):
         # post_physics_step에서 compute_ref_observation() 불렀을 때
         if (env_ids is None):
-            local_dof, local_body_angvel, global_ee_pos \
+            local_dof, local_body_angvel, global_ee_pos, global_root \
                 = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
 
         else:
-            local_dof, local_body_angvel, global_ee_pos \
+            local_dof, local_body_angvel, global_ee_pos, global_root \
                 = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
 
         local_lrot = dof_to_local_rotation(local_dof, (len(self._dof_offsets) - 1) * 4, dof_offsets=self._dof_offsets)
         
         flat_local_body_angvel = local_body_angvel.reshape(local_body_angvel.size(0), local_body_angvel.size(1) * local_body_angvel.size(2))  #! 확인 필요  # [num_envs, 15 * 3]
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
+        float_global_root = global_root.reshape(global_root.shape[0], global_root.shape[1] * global_root.shape[2])
 
-        # print("*" * 10)
-        # print("self._motion_times: ", self._motion_times)
-        # print("local_body_rot: ", local_body_rot)
-        # print("*" * 10, "\n")
-        # print("flat_local_body_rot: ", flat_local_body_rot)
-        # print("*" * 10, "\n\n\n\n")
-        # [num_envs, 105] = 12 * 4 + 15 * 3 + 4 * 3
-        ref_obs = torch.cat((local_lrot, flat_local_body_angvel, flat_global_ee_pos), dim=-1)
+        # [num_envs, 108] = 12 * 4 + 15 * 3 + 4 * 3 + 3
+        ref_obs = torch.cat((local_lrot, flat_local_body_angvel, flat_global_ee_pos, float_global_root), dim=-1)
         return ref_obs
 
     def _compute_reward(self, actions):
         obs = self.obs_buf              # shape: [num_envs, 196]
         ref_obs = self.ref_buf          # shape: [num_envs, 117]
-        # print("*" * 10)
-        # print("ref_obs: ", ref_obs[:, 0:60])
-        # print("*" * 10, "\n\n\n\n")
+
         self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, self._motion_times, len(self._dof_offsets)-1)
         return
 
@@ -383,7 +338,7 @@ def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel,
     if (not root_height_obs):
         root_h_obs = torch.zeros_like(root_h)
     else:
-        root_h_obs = root_h
+        root_h_obs = root_h                     # [num_envs, 1]
     
     heading_rot_expand = heading_rot.unsqueeze(-2)
     heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
@@ -402,6 +357,7 @@ def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel,
     cuda = torch.device('cuda')
     body_lrot.to(cuda)
     obs = torch.cat((body_lrot, local_body_pos, root_h_obs), dim=-1)
+    # obs = torch.cat(([body_lrot]), dim=-1)
     return obs
 
 
@@ -410,8 +366,10 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times, num_joints):
     # type: (Tensor, Tensor, Tensor, int) -> Tensor
     num_envs = obs_buf.shape[0]
     num_key_body = 4
-    pose_w = 1
+    pose_w = 0.8
+    root_w = 0.2
 
+    #### 1. local_body rotation
     # get simulated character's local_body_rot_obs
     local_dof_obs = obs_buf[:, 0:48]          # [num_envs, 12 * 4]
     local_dof = local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs * num_joints, 4]
@@ -431,5 +389,15 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times, num_joints):
     sum_rot_diff_angle = torch.sum(flat_rot_diff_angle**2, dim=-1)
 
     pose_reward = torch.exp(-1 * sum_rot_diff_angle)
-    reward = pose_w * pose_reward
+
+    #### 2. body root position
+    # simulated charater's global root position
+    root_obs = obs_buf[:, -1]
+
+    # reference charater's global root position
+    ref_root_obs = ref_buf[:, [-3, -2, -1]]
+    ref_root_h = ref_root_obs[:, 1]
+    root_reward = torch.exp(-1 * torch.abs(root_obs - ref_root_h))
+    reward = pose_w * pose_reward + root_w * root_reward
+
     return reward
