@@ -101,11 +101,11 @@ class MotionLib():
 
         #! skeleton3d.py > SkeletonMotion
         motions = self._motions
-        self.gts = torch.cat([m.global_translation for m in motions], dim=0).float()                # global translation:           [num_frames, num_rigid_bodies, 3]
-        self.grs = torch.cat([m.global_rotation for m in motions], dim=0).float()                   # global rotation:              [num_frames, num_rigid_bodies, 4]
-        self.lrs = torch.cat([m.local_rotation for m in motions], dim=0).float()                    # body local rotation:          [num_frames, num_rigid_bodies, 4]
-        self.grvs = torch.cat([m.global_root_velocity for m in motions], dim=0).float()             # global root velocity:         [num_frames, 3]
-        self.gravs = torch.cat([m.global_root_angular_velocity for m in motions], dim=0).float()    # global_root_angular_velocity: [num_frames, 4]
+        self.gts = torch.cat([m.global_translation for m in motions], dim=0).float()                # global translation:           [motion file들의 num_frames * num_motion_file, num_rigid_bodies, 3]
+        self.grs = torch.cat([m.global_rotation for m in motions], dim=0).float()                   # global rotation:              [motion file들의 num_frames * num_motion_file, num_rigid_bodies, 4]
+        self.lrs = torch.cat([m.local_rotation for m in motions], dim=0).float()                    # body local rotation:          [motion file들의 num_frames, num_rigid_bodies, 4]
+        self.grvs = torch.cat([m.global_root_velocity for m in motions], dim=0).float()             # global root velocity:         [motion file들의 num_frames * num_motion_file, 3]
+        self.gravs = torch.cat([m.global_root_angular_velocity for m in motions], dim=0).float()    # global_root_angular_velocity: [motion file들의 num_frames * num_motion_file, 4]
         #! from _compute_motion_dof_vels (local_angular_velocity from difference b/w local_rots)
         self.dvs = torch.cat([m.dof_vels for m in motions], dim=0).float()  # local dof joint velocity  # local_angular_velocity
 
@@ -401,6 +401,7 @@ class DeepMimicMotionLib(MotionLib):
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
     
     def sample_time(self, motion_ids, max_episode_length, dt=None, train_epoch=None, is_train=True):
+
         n = len(motion_ids)
         phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
         motion_len = self._motion_lengths[motion_ids]
@@ -414,11 +415,12 @@ class DeepMimicMotionLib(MotionLib):
         env_overred = torch.where(overred == True)
 
 
-        if (phase[env_overred].shape[0] == 0):
-            pass
-        else:
-            new_motion_time = torch.mul(phase[env_overred], boundary[env_overred])
-            motion_time[env_overred] = new_motion_time
+        # if (phase[env_overred].shape[0] == 0):
+        #     pass
+        # else:
+        #     new_motion_time = torch.mul(phase[env_overred], boundary[env_overred])
+        #     new_motion_time = boundary
+        #     motion_time[env_overred] = new_motion_time
 
         return motion_time
 
@@ -458,7 +460,7 @@ class DeepMimicMotionLib(MotionLib):
 
         return blended_global_quat
 
-    def _get_body_local_quat(self, motion_ids, motion_times):
+    def _get_dof_local_quat(self, motion_ids, motion_times):
 
         motion_len = self._motion_lengths[motion_ids]       
         num_frames = self._motion_num_frames[motion_ids]    
@@ -581,7 +583,7 @@ class DeepMimicMotionLib(MotionLib):
         return key_pos # [1, num_key_bodies, 3]
 
     def get_motion_state_for_reference(self, motion_ids, motion_times):
-        local_body_rot = self._get_body_local_quat(motion_ids, motion_times)
+        local_body_rot = self._get_dof_local_quat(motion_ids, motion_times)
         local_body_angvel = self._get_body_local_angvel(motion_ids, motion_times)
         global_ee_pos = self._get_ee_world_position(motion_ids, motion_times)
         return local_body_rot, local_body_angvel, global_ee_pos

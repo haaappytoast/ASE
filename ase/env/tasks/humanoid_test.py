@@ -376,12 +376,32 @@ def compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel
 def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, local_root_obs, root_height_obs, dof_pos):
     # type: (Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> Tensor
 
+    root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
+    root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
+    root_h = root_pos[:, 2:3]       # get z-value
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)
+    if (not root_height_obs):
+        root_h_obs = torch.zeros_like(root_h)
+    else:
+        root_h_obs = root_h
+    
+    heading_rot_expand = heading_rot.unsqueeze(-2)
+    heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
+    flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                                    heading_rot_expand.shape[2])        # shrink shape: [1, 15, 4] -> [15, 4]
+    
+    root_pos_expand = root_pos.unsqueeze(-2)            # shape: [1, 1, 3]
+    local_body_pos = body_pos - root_pos_expand         #! root_relative_position / shape: [1, 15, 3] / 15: num_body
+    flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])    # shrink shape: [15, 3]/ 15: num_body
+    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! root의 local x-axis에서 바라본 root_relative_position of link / shape: [1, 15, 3]
+    local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])    # [1, 15 * 3]
+
     _dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
     body_lrot = dof_to_local_rotation(dof_pos, 48, _dof_offsets)    # [num_envs, 4 * 12]
     
     cuda = torch.device('cuda')
     body_lrot.to(cuda)
-    obs = torch.cat(([body_lrot]), dim=-1)
+    obs = torch.cat((body_lrot, local_body_pos, root_h_obs), dim=-1)
     return obs
 
 
@@ -393,18 +413,16 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times, num_joints):
     pose_w = 1
 
     # get simulated character's local_body_rot_obs
-    local_dof_obs = obs_buf          # [num_envs, 12 * 4]
-
+    local_dof_obs = obs_buf[:, 0:48]          # [num_envs, 12 * 4]
     local_dof = local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs * num_joints, 4]
 
     # get reference character's local_dof_obs
     ref_local_dof_obs = ref_buf[:, 0:48]          # [num_envs, 12 * 4]
-    
-    ref_local_dof = ref_local_dof_obs.reshape(num_envs * num_joints, -1)           # [num_envs, num_joints, 4]
+    ref_local_dof = ref_local_dof_obs.reshape(num_envs * num_joints, -1)            # [num_envs, num_joints, 4]
     
     # get quaternion difference
     inv_local_dof = quat_inverse(local_dof)
-    dof_diff = quat_mul_norm(inv_local_dof, ref_local_dof)    
+    dof_diff = quat_mul_norm(ref_local_dof, inv_local_dof)    
 
     # get scalar rotation of a quaternion about its axis in radians 
     rot_diff_angle, rot_diff_axis = quat_angle_axis(dof_diff)                      # [num_envs * 12], [num_envs * 12, 3]

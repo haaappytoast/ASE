@@ -1260,11 +1260,12 @@ class SkeletonMotion(SkeletonState):
     @staticmethod
     def _compute_angular_velocity(r, time_delta: float, guassian_filter=True):
         # assume the second last dimension is the time axis
-        diff_quat_data = quat_identity_like(r)
+        diff_quat_data = quat_identity_like(r)      # r: rotation matrix, shape: [num_frames, rigid_body, 4]
         diff_quat_data[..., :-1, :, :] = quat_mul_norm(
             r[..., 1:, :, :], quat_inverse(r[..., :-1, :, :])
         )
-        diff_angle, diff_axis = quat_angle_axis(diff_quat_data)
+        diff_angle, diff_axis = quat_angle_axis(diff_quat_data) # shape: [num_frames, rigid_body] / [num_frames, rigid_body, 3]
+        
         angular_velocity = diff_axis * diff_angle.unsqueeze(-1) / time_delta
         angular_velocity = torch.from_numpy(
             filters.gaussian_filter1d(
