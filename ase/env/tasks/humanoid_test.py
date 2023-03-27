@@ -217,7 +217,7 @@ class HumanoidTest(Humanoid):
         return
 
     def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
-        self._humanoid_root_states[env_ids, 0:3] = root_pos
+        self._humanoid_root_states[env_ids, 0:3] = root_pos + torch.tensor([0, 0, 0.05]).to(device=self.device)
         self._humanoid_root_states[env_ids, 3:7] = root_rot
         self._humanoid_root_states[env_ids, 7:10] = root_vel
         self._humanoid_root_states[env_ids, 10:13] = root_ang_vel
@@ -395,9 +395,8 @@ def compute_deepmm_reward(obs_buf, ref_buf, motion_times, num_joints):
     root_obs = obs_buf[:, -1]
 
     # reference charater's global root position
-    ref_root_obs = ref_buf[:, [-3, -2, -1]]
-    ref_root_h = ref_root_obs[:, 1]
-    root_reward = torch.exp(-1 * torch.abs(root_obs - ref_root_h))
-    reward = pose_w * pose_reward + root_w * root_reward
-
+    ref_root_h_obs = ref_buf[:, -1]
+    root_reward = torch.exp(-1 * torch.abs(root_obs - ref_root_h_obs))
+    # reward = pose_w * pose_reward + root_w * root_reward
+    reward = pose_w * pose_reward
     return reward

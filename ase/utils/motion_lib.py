@@ -140,7 +140,6 @@ class MotionLib():
         phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
         motion_len = self._motion_lengths[motion_ids]
 
-        truncate_time = 3
         if (truncate_time is not None):
             assert(truncate_time >= 0.0)
             motion_len -= truncate_time
@@ -414,13 +413,11 @@ class DeepMimicMotionLib(MotionLib):
         overred = boundary < motion_time
         env_overred = torch.where(overred == True)
 
-
-        # if (phase[env_overred].shape[0] == 0):
-        #     pass
-        # else:
-        #     new_motion_time = torch.mul(phase[env_overred], boundary[env_overred])
-        #     new_motion_time = boundary
-        #     motion_time[env_overred] = new_motion_time
+        if ((env_overred[0]).shape[0] == 0):
+            pass
+        else:
+            new_motion_time = torch.mul(phase[env_overred], boundary[env_overred])
+            motion_time[env_overred] = new_motion_time
 
         return motion_time
 
