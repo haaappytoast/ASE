@@ -107,8 +107,7 @@ class MotionLib():
         self.grvs = torch.cat([m.global_root_velocity for m in motions], dim=0).float()             # global root velocity:         [motion file들의 num_frames * num_motion_file, 3]
         self.gravs = torch.cat([m.global_root_angular_velocity for m in motions], dim=0).float()    # global_root_angular_velocity: [motion file들의 num_frames * num_motion_file, 4]
         #! from _compute_motion_dof_vels (local_angular_velocity from difference b/w local_rots)
-        self.dvs = torch.cat([m.dof_vels for m in motions], dim=0).float()  # local dof joint velocity  # local_angular_velocity
-
+        self.dvs = torch.cat([m.dof_vels for m in motions], dim=0).float()  # local dof joint velocity  # local_angular_velocity: [motion file들의 num_frames * num_motion_file, 28]
         lengths = self._motion_num_frames
         lengths_shifted = lengths.roll(1)
         lengths_shifted[0] = 0
@@ -161,11 +160,6 @@ class MotionLib():
 
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
 
-        # frame_idx0 = torch.tensor([0]).to(device=0)
-        # frame_idx1 = torch.tensor([0]).to(device=0)
-        # blend = torch.Tensor([0.0]).to(device=0)
-        # print("after // frame_idx0", frame_idx0.item(),", frame_idx1: ", frame_idx1.item(), ",blend: ", blend.item())
-        
         f0l = frame_idx0 + self.length_starts[motion_ids]
         f1l = frame_idx1 + self.length_starts[motion_ids]
 
@@ -502,7 +496,7 @@ class DeepMimicMotionLib(MotionLib):
 
         return dof_vel    # [1, num_dof]
     
-    def _get_body_local_angvel(self, motion_ids, motion_times):
+    def _get_dof_local_angvel(self, motion_ids, motion_times):
         motion_len = self._motion_lengths[motion_ids]       
         num_frames = self._motion_num_frames[motion_ids]    
         dt = self._motion_dt[motion_ids]                    
@@ -510,48 +504,10 @@ class DeepMimicMotionLib(MotionLib):
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
 
         f0l = frame_idx0 + self.length_starts[motion_ids]
-        f1l = frame_idx1 + self.length_starts[motion_ids]
 
-        # root 관련 정보
-        root_rot0 = self.grs[f0l, 0]
-        root_rot1 = self.grs[f1l, 0]
+        dof_vel = self.dvs[f0l]             #   [num_envs, 28]
 
-        # global body angular velocity 관련 정보 
-        body_global_ang_vel0 = self.gavs[f0l]
-        body_global_ang_vel1 = self.gavs[f1l]
-
-        vals = [root_rot0, root_rot1, body_global_ang_vel0, body_global_ang_vel1]
-        for v in vals:
-            assert v.dtype != torch.float64
-
-        blend = blend.unsqueeze(-1)
-
-        if (blend.shape[0] > 1):
-            blend_expand = blend.unsqueeze(-2)
-            blend_expand = blend_expand.repeat((1, body_global_ang_vel0.shape[1], 1))   # shape: [2, 15, 1]
-            body_glob_ang_vel = torch_utils.slerp(body_global_ang_vel0, body_global_ang_vel1, blend_expand)   # [2, 15, 3]
-        else:
-            body_glob_ang_vel = torch_utils.slerp(body_global_ang_vel0, body_global_ang_vel1, blend)   # [1, 15, 3]
-
-        # root blending
-        root_rot = torch_utils.slerp(root_rot0, root_rot1, blend)
-        # global body angular velocity blending
-        flat_body_ang_vel = body_glob_ang_vel.reshape(body_glob_ang_vel.shape[0] * body_glob_ang_vel.shape[1], 
-                                                            body_glob_ang_vel.shape[2])                         # [num_env * rigid_body_size, 3]
-        
-
-        # heading_rot 구하기
-        heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)   [num_envs, 4]
-        heading_rot_expand = heading_rot.unsqueeze(-2)              # [1, 1, 4]
-        heading_rot_expand = heading_rot_expand.repeat((1, body_glob_ang_vel.shape[1], 1))      # [1, 15, 4]
-        flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
-                                                        heading_rot_expand.shape[2])
-        
-        # calculate local body angular velocity
-        local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel) #! local(root coordinate)에서 바라본 body rot / shape: [15 * num_envs, 4]
-        local_body_ang_vel = local_body_ang_vel.reshape(heading_rot.shape[0], -1, local_body_ang_vel.shape[-1])
-
-        return local_body_ang_vel    # [num_envs, 15, 3]
+        return dof_vel
         
     def _get_ee_world_position(self, motion_ids, motion_times):
         motion_len = self._motion_lengths[motion_ids]       
@@ -607,12 +563,12 @@ class DeepMimicMotionLib(MotionLib):
         return root_pos
     
     def get_motion_state_for_reference(self, motion_ids, motion_times):
-        local_dof_rot = self._get_dof_local_quat(motion_ids, motion_times)
-        local_body_angvel = self._get_body_local_angvel(motion_ids, motion_times)
+        local_dof_rot = self._get_dof_local_quat(motion_ids, motion_times)      # []
+        local_dof_vel = self._get_dof_local_angvel(motion_ids, motion_times)    # [num_envs, 28]
         global_ee_pos = self._get_ee_world_position(motion_ids, motion_times)
         global_root = self.get_global_root(motion_ids, motion_times)
 
-        return local_dof_rot, local_body_angvel, global_ee_pos, global_root
+        return local_dof_rot, local_dof_vel, global_ee_pos, global_root
 
     def _get_blended_global_rot(self, motion_ids, motion_times):
         n = len(motion_ids)
