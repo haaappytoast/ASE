@@ -607,12 +607,12 @@ class DeepMimicMotionLib(MotionLib):
         return root_pos
     
     def get_motion_state_for_reference(self, motion_ids, motion_times):
-        local_body_rot = self._get_dof_local_quat(motion_ids, motion_times)
+        local_dof_rot = self._get_dof_local_quat(motion_ids, motion_times)
         local_body_angvel = self._get_body_local_angvel(motion_ids, motion_times)
         global_ee_pos = self._get_ee_world_position(motion_ids, motion_times)
         global_root = self.get_global_root(motion_ids, motion_times)
 
-        return local_body_rot, local_body_angvel, global_ee_pos, global_root
+        return local_dof_rot, local_body_angvel, global_ee_pos, global_root
 
     def _get_blended_global_rot(self, motion_ids, motion_times):
         n = len(motion_ids)
