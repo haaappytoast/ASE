@@ -55,21 +55,5 @@ class ModelDeepmmContinuous(ModelA2CContinuousLogStd):
             is_train = input_dict.get('is_train', True)
             #! 2. go to deepmm_network_builder.py Network.forward
             result = super().forward(input_dict)
-
-            #! 3. after going through 2. then do this => discriminator training
-            if (is_train):
-                pass
-                # amp_obs = input_dict['amp_obs']
-                # disc_agent_logit = self.a2c_network.eval_disc(amp_obs)
-                # result["disc_agent_logit"] = disc_agent_logit
-
-                # amp_obs_replay = input_dict['amp_obs_replay']
-                # disc_agent_replay_logit = self.a2c_network.eval_disc(amp_obs_replay)
-                # result["disc_agent_replay_logit"] = disc_agent_replay_logit
-
-                # amp_demo_obs = input_dict['amp_obs_demo']
-                # disc_demo_logit = self.a2c_network.eval_disc(amp_demo_obs)
-                # result["disc_demo_logit"] = disc_demo_logit
-            
             #! training시에는 go to deepmm_agent.py -> calc_gradients() -> res_dict = self.model(batch_dict)
             return result

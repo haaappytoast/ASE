@@ -51,20 +51,12 @@ class DeepmmBuilder(network_builder.A2CBuilder):
                     sigma_init = self.init_factory.create(**self.space_config['sigma_init'])
                     self.sigma = nn.Parameter(torch.zeros(actions_num, requires_grad=False, dtype=torch.float32), requires_grad=False)
                     sigma_init(self.sigma)
-                    
-            # amp_input_shape = kwargs.get('amp_input_shape')
-            # #! discriminator network 쌓는 code
-            # self._build_disc(amp_input_shape)
 
             return
 
         #! params == yaml['params']['network']안에 있는 정보들
         def load(self, params):
             super().load(params)
-            ##!! should change later
-            self._disc_units = params['disc']['units']
-            self._disc_activation = params['disc']['activation']
-            self._disc_initializer = params['disc']['initializer']
             return
 
         def forward(self, obs_dict):
@@ -72,10 +64,10 @@ class DeepmmBuilder(network_builder.A2CBuilder):
             obs = obs_dict['obs']
             states = obs_dict.get('rnn_states', None)
             #! train actor function
-            actor_outputs = self.eval_actor(obs)    #! mu, sigma -> 각각 actor_outputs[0],[1] -> torch.Size([1, 28]
+            actor_outputs = self.eval_actor(obs)    #! mu, sigma -> 각각 actor_outputs[0],[1] 각각 -> torch.Size([num_envs, 28]
             #! train value function
             value = self.eval_critic(obs)           #! value.size = [1, 1]
-            output = actor_outputs + (value, states)    #! states none
+            output = actor_outputs + (value, states)    #! states none -> output은 (mu, sigma, value)를 가지는 tuple이 됨
             return output
 
         def eval_actor(self, obs):
@@ -91,13 +83,12 @@ class DeepmmBuilder(network_builder.A2CBuilder):
                 logits = [logit(a_out) for logit in self.logits]
                 return logits
 
-            if self.is_continuous:
-                mu = self.mu_act(self.mu(a_out))
-                if self.space_config['fixed_sigma']:
+            if self.is_continuous:  # yes
+                mu = self.mu_act(self.mu(a_out))        # learned -> from mu_act 
+                if self.space_config['fixed_sigma']:    # yes   -> 여기서는 -2.9로 모두 고정되어있음
                     sigma = mu * 0.0 + self.sigma_act(self.sigma)
                 else:
                     sigma = self.sigma_act(self.sigma(a_out))
-
                 return mu, sigma
             return
 
@@ -105,51 +96,8 @@ class DeepmmBuilder(network_builder.A2CBuilder):
             c_out = self.critic_cnn(obs)
             c_out = c_out.contiguous().view(c_out.size(0), -1)
             c_out = self.critic_mlp(c_out)              
-            value = self.value_act(self.value(c_out))   #! value activation -> defined in network_builder.py
+            value = self.value_act(self.value(c_out))   #! value activation -> defined in network_builder.py    # shape: [num_envs, 1]
             return value
-
-        # def eval_disc(self, amp_obs):
-        #     disc_mlp_out = self._disc_mlp(amp_obs)
-        #     disc_logits = self._disc_logits(disc_mlp_out)
-        #     return disc_logits
-
-        # def get_disc_logit_weights(self):
-        #     return torch.flatten(self._disc_logits.weight)
-
-        # def get_disc_weights(self):
-        #     weights = []
-        #     for m in self._disc_mlp.modules():
-        #         if isinstance(m, nn.Linear):
-        #             weights.append(torch.flatten(m.weight))
-
-        #     weights.append(torch.flatten(self._disc_logits.weight))
-        #     return weights
-
-        # def _build_disc(self, input_shape):
-        #     self._disc_mlp = nn.Sequential()
-
-        #     mlp_args = {
-        #         'input_size' : input_shape[0], 
-        #         'units' : self._disc_units, 
-        #         'activation' : self._disc_activation, 
-        #         'dense_func' : torch.nn.Linear
-        #     }
-        #     self._disc_mlp = self._build_mlp(**mlp_args)
-            
-        #     mlp_out_size = self._disc_units[-1]
-        #     self._disc_logits = torch.nn.Linear(mlp_out_size, 1)
-
-        #     mlp_init = self.init_factory.create(**self._disc_initializer)
-        #     for m in self._disc_mlp.modules():
-        #         if isinstance(m, nn.Linear):
-        #             mlp_init(m.weight)
-        #             if getattr(m, "bias", None) is not None:
-        #                 torch.nn.init.zeros_(m.bias) 
-
-        #     torch.nn.init.uniform_(self._disc_logits.weight, -DISC_LOGIT_INIT_SCALE, DISC_LOGIT_INIT_SCALE)
-        #     torch.nn.init.zeros_(self._disc_logits.bias) 
-
-        #     return
 
     def build(self, name, **kwargs):
         #!! should be always changed
