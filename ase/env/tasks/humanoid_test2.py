@@ -43,7 +43,7 @@ from utils import torch_utils
 import sys
 from poselib.poselib.core import *
 
-class HumanoidTest(Humanoid):
+class HumanoidTest2(Humanoid):
     class StateInit(Enum):
         Start = 1
         Random = 2
@@ -51,7 +51,7 @@ class HumanoidTest(Humanoid):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         state_init = cfg["env"]["stateInit"]
         #! from ase/data/cfg
-        self._state_init = HumanoidTest.StateInit[state_init]
+        self._state_init = HumanoidTest2.StateInit[state_init]
 
         self._usePhase = True
 
@@ -151,7 +151,7 @@ class HumanoidTest(Humanoid):
             self._dof_obs_size = 72     #! 6 (joint_obs_size) * 12 (num_joints)
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
-            self._num_obs = 48
+            self._num_obs = 94
 
             self._parent_indices = [-1,  0,  1,  1,  3,  4,  1,  6,  7,  0,  9, 10, 0, 12, 13]
 
@@ -173,8 +173,8 @@ class HumanoidTest(Humanoid):
     
     #! state 다시 initialize 해주는 코드!
     def _reset_actors(self, env_ids):
-        if (self._state_init == HumanoidTest.StateInit.Start
-              or self._state_init == HumanoidTest.StateInit.Random):
+        if (self._state_init == HumanoidTest2.StateInit.Start
+              or self._state_init == HumanoidTest2.StateInit.Random):
             self._reset_ref_state_init(env_ids)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
@@ -184,10 +184,10 @@ class HumanoidTest(Humanoid):
         num_envs = env_ids.shape[0]
         motion_ids = self._motion_lib.sample_motions(num_envs)
                 
-        if (self._state_init == HumanoidTest.StateInit.Random):
+        if (self._state_init == HumanoidTest2.StateInit.Random):
             # motion_times = self._motion_lib.sample_time(motion_ids, self.cfg["env"]["episodeLength"], self.dt, train_epoch, self.is_train)
             motion_times = self._motion_lib.sample_time(motion_ids)
-        elif (self._state_init == HumanoidTest.StateInit.Start):
+        elif (self._state_init == HumanoidTest2.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
@@ -217,7 +217,7 @@ class HumanoidTest(Humanoid):
         return
 
     def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
-        self._humanoid_root_states[env_ids, 0:3] = root_pos + torch.tensor([0, 0, 0.05]).to(device=self.device)
+        self._humanoid_root_states[env_ids, 0:3] = root_pos
         self._humanoid_root_states[env_ids, 3:7] = root_rot
         self._humanoid_root_states[env_ids, 7:10] = root_vel
         self._humanoid_root_states[env_ids, 10:13] = root_ang_vel
@@ -283,13 +283,35 @@ class HumanoidTest(Humanoid):
 def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, local_root_obs, root_height_obs, dof_pos):
     # type: (Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> Tensor
 
+    root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
+    root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
+    root_h = root_pos[:, 2:3]       # get z-value
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)
+    if (not root_height_obs):
+        root_h_obs = torch.zeros_like(root_h)
+    else:
+        root_h_obs = root_h                     # [num_envs, 1]
+    
+    heading_rot_expand = heading_rot.unsqueeze(-2)
+    heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
+    flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                                    heading_rot_expand.shape[2])        # shrink shape: [1, 15, 4] -> [15, 4]
+    
+    root_pos_expand = root_pos.unsqueeze(-2)            # shape: [1, 1, 3]
+    local_body_pos = body_pos - root_pos_expand         #! root_relative_position / shape: [1, 15, 3] / 15: num_body
+    flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])    # shrink shape: [15, 3]/ 15: num_body
+    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! root의 local x-axis에서 바라본 root_relative_position of link / shape: [1, 15, 3]
+    local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])    # [1, 15 * 3]
+
     _dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
     body_lrot = dof_to_local_rotation(dof_pos, 48, _dof_offsets)    # [num_envs, 4 * 12]
     
     cuda = torch.device('cuda')
     body_lrot.to(cuda)
-    obs = torch.cat(([body_lrot]), dim=-1)
+    obs = torch.cat((body_lrot, local_body_pos, root_h_obs), dim=-1)
+    # obs = torch.cat(([body_lrot]), dim=-1)
     return obs
+
 
 
 @torch.jit.script

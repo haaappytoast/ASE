@@ -29,19 +29,10 @@
 #!! should be always changed
 from env.tasks.humanoid_deepmm import HumanoidDeepmm
 from env.tasks.humanoid_test import HumanoidTest
-from env.tasks.humanoid_rot import HumanoidRot
-from env.tasks.humanoid_temp import HumanoidCompareSimRefDof
+from env.tasks.humanoid_test2 import HumanoidTest2
 from env.tasks.humanoid_deepmimic import HumanoidDeepmimic
-from env.tasks.humanoid_view_motions import HumanoidViewMotions
 
 from env.tasks.humanoid import Humanoid
-from env.tasks.humanoid_amp import HumanoidAMP
-# from env.tasks.humanoid_amp_getup import HumanoidAMPGetup
-# from env.tasks.humanoid_heading import HumanoidHeading
-# from env.tasks.humanoid_location import HumanoidLocation
-# from env.tasks.humanoid_strike import HumanoidStrike
-# from env.tasks.humanoid_reach import HumanoidReach
-# from env.tasks.humanoid_perturb import HumanoidPerturb
 from env.tasks.humanoid_view_motion import HumanoidViewMotion
 #! added for deepmm
 from env.tasks.vec_task_wrappers import VecTaskPythonWrapper, VecTaskDeepmmWrapper
