@@ -307,6 +307,7 @@ class Humanoid(BaseTask):
         dof_prop = self.gym.get_actor_dof_properties(self.envs[0], self.humanoid_handles[0])
         #! dof angle limit을 xml에 맞게 저장
         for j in range(self.num_dof):
+            #! dof_prop['lower'], ['upper']: joint의 range -> in radian
             if dof_prop['lower'][j] > dof_prop['upper'][j]:
                 self.dof_limits_lower.append(dof_prop['upper'][j])
                 self.dof_limits_upper.append(dof_prop['lower'][j])
@@ -459,7 +460,7 @@ class Humanoid(BaseTask):
         return
 
     def pre_physics_step(self, actions):
-        self.actions = actions.to(self.device).clone()
+        self.actions = actions.to(self.device).clone()  #! a𝑡 specifies target rotations for PD controllers
         if (self._pd_control):
             pd_tar = self._action_to_pd_targets(self.actions)   # shape: [1, 28]
             pd_tar_tensor = gymtorch.unwrap_tensor(pd_tar)
@@ -759,7 +760,6 @@ def compute_humanoid_observations_max(body_pos, body_rot, body_vel, body_ang_vel
     local_body_ang_vel = flat_local_body_ang_vel.reshape(body_ang_vel.shape[0], body_ang_vel.shape[1] * body_ang_vel.shape[2])   # torch.Size([1, 15 * 3])
     
     #!! should add phase variable to observation
-
     # shape: [1, 223] = 1 + (3 * 14) + (6 * 15) + (3 * 15) + (3 * 15)
     obs = torch.cat((root_h_obs, local_body_pos, local_body_rot_obs, local_body_vel, local_body_ang_vel), dim=-1)
     return obs
