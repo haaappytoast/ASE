@@ -614,6 +614,66 @@ class DeepMimicMotionLib(MotionLib):
 
         return local_dof_rot, local_body_angvel, global_ee_pos, global_root
 
+
+    def get_body_state_for_reference(self, motion_ids, motion_times):
+        local_body_rot, local_body_ang_vel = self._get_local_body_rot_angvel(motion_ids, motion_times)
+
+        return local_body_rot, local_body_ang_vel
+
+    def _get_local_body_rot_angvel(self, motion_ids, motion_times):
+
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]              
+        
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+                
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+
+        # global rotation 관련 정보
+        global_quat0 = self.grs[f0l]            # shape: [motion file들의 num_frames * num_motion_file, num_rigid_bodies, 3]
+        global_quat1 = self.grs[f1l]
+
+        # global angular velocity 관련 정보
+        global_angvel = self.gavs[f0l]         # shape: [motion file들의 num_frames * num_motion_file, num_rigid_bodies, 3]
+        
+        # root 관련 정보
+        root_rot0 = self.grs[f0l, 0]
+        root_rot1 = self.grs[f1l, 0]
+
+        vals = [global_quat0, global_quat1, global_angvel]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+        blend = blend.unsqueeze(-1)             # [num_envs, 1]
+        
+        # root blending
+        root_rot = torch_utils.slerp(root_rot0, root_rot1, blend)
+        heading_rot = torch_utils.calc_heading_quat_inv(root_rot)
+
+        # global quat blending
+        blended_global_quat = torch_utils.slerp(global_quat0, global_quat1, torch.unsqueeze(blend, axis=-1))
+        
+        heading_rot_expand = heading_rot.unsqueeze(-2)
+        heading_rot_expand = heading_rot_expand.repeat((1, global_quat0.shape[1], 1))       # shape: [num_envs, 15, 4]
+
+        flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                                        heading_rot_expand.shape[2])        # shrink shape: [num_envs, 15, 4] -> [num_envs * 15, 4]
+        # local body rotation
+        flat_body_rot = blended_global_quat.reshape(blended_global_quat.shape[0] * blended_global_quat.shape[1], blended_global_quat.shape[2])  # shape: [num_envs * 15, 4]
+        flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot)                                                                         # local (root coordinate)에서 바라본 body rot / shape: [num_envs * 15, 4]
+        local_body_rot = flat_local_body_rot.reshape(blended_global_quat.shape[0], blended_global_quat.shape[1] * blended_global_quat.shape[2]) # shape: [num_envs , 4 * 15]
+
+        # local body angular velocity
+        flat_body_ang_vel = global_angvel.reshape(global_angvel.shape[0] * global_angvel.shape[1], global_angvel.shape[2])   # torch.Size([num_envs * 15, 3])
+        flat_local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel)                                       #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
+        local_body_ang_vel = flat_local_body_ang_vel.reshape(global_angvel.shape[0], global_angvel.shape[1] * global_angvel.shape[2])   # torch.Size([num_envs, 15 * 3])
+
+        return local_body_rot, local_body_ang_vel
+
+
+
     def _get_blended_global_rot(self, motion_ids, motion_times):
         n = len(motion_ids)
         num_bodies = self._get_num_bodies()
