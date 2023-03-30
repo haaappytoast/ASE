@@ -86,3 +86,5 @@ params:
     enable_eps_greedy: False
 
     task_reward_w: 1.0
+    
+    save_intermediate: True
