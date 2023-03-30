@@ -11,7 +11,8 @@ from isaacgym.torch_utils import *
 import torch
 import yaml
 
-SIM_TIMESTEP = 1.0 / 60.0
+# SIM_TIMESTEP = 1.0 / 60.0
+SIM_TIMESTEP = 1.0 / 30.0
 
 def get_args(benchmark=False):
     custom_parameters = [
