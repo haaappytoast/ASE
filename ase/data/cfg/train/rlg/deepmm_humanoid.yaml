@@ -38,12 +38,6 @@ params:
       regularizer:
         name: None
 
-    disc:
-      units: [1024, 512]
-      activation: relu
-
-      initializer:
-        name: default
 
 # self.load_check_point
   load_checkpoint: False
@@ -84,5 +78,6 @@ params:
     seq_len: 4
     bounds_loss_coef: 10
     enable_eps_greedy: False
-
     task_reward_w: 1.0
+    
+    save_intermediate: True
