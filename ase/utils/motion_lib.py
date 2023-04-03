@@ -563,7 +563,7 @@ class DeepMimicMotionLib(MotionLib):
         return root_pos
     
     def get_motion_state_for_reference(self, motion_ids, motion_times):
-        local_dof_rot = self._get_dof_local_quat(motion_ids, motion_times)      # []
+        local_dof_rot = self._get_blended_local_rot(motion_ids, motion_times)      # []
         local_dof_vel = self._get_dof_local_angvel(motion_ids, motion_times)    # [num_envs, 28]
         global_ee_pos = self._get_ee_world_position(motion_ids, motion_times)
         global_root = self.get_global_root(motion_ids, motion_times)
@@ -617,11 +617,7 @@ class DeepMimicMotionLib(MotionLib):
         dt = self._motion_dt[motion_ids]                    
 
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
-        # frame_idx0 = torch.tensor([0]).to(device=0)
-        # frame_idx1 = torch.tensor([0]).to(device=0)
-        # blend = torch.Tensor([0.0]).to(device=0)
-        # print("after // frame_idx0", frame_idx0.item(),", frame_idx1: ", frame_idx1.item(), ",blend: ", blend.item())
-        
+
         f0l = frame_idx0 + self.length_starts[motion_ids]
         f1l = frame_idx1 + self.length_starts[motion_ids]
 
