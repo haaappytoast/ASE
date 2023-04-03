@@ -237,8 +237,8 @@ class HumanoidTest(Humanoid):
             self.obs_buf[:] = obs[:, 76:]
             self._dof_buf[:] = obs[:, :76]
         else:
-            self.obs_buf[env_ids] = obs[env_ids, 76:]
-            self._dof_buf[env_ids] = obs[env_ids, :76]
+            self.obs_buf[env_ids] = obs[:, 76:]
+            self._dof_buf[env_ids] = obs[:, :76]
         return
         
     def _compute_humanoid_obs(self, env_ids=None):
@@ -273,14 +273,15 @@ class HumanoidTest(Humanoid):
         else:
             local_dof_pos, local_dof_vel, global_ee_pos, global_root \
                 = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
-
-        local_lrot = dof_to_local_rotation(local_dof_pos, (len(self._dof_offsets) - 1) * 4, dof_offsets=self._dof_offsets)
         
+        # local_lrot = dof_to_local_rotation(local_dof_pos, (len(self._dof_offsets) - 1) * 4, dof_offsets=self._dof_offsets)
+        local_dof_pos = local_dof_pos[:, self._dof_body_ids]
+        flat_local_lrot = local_dof_pos.reshape(local_dof_pos.shape[0], len(self._dof_body_ids) * local_dof_pos.shape[2]) 
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
         float_global_root = global_root.reshape(global_root.shape[0], global_root.shape[1] * global_root.shape[2])
 
         # [num_envs, 91] = 12 * 4 + 28 + 4 * 3 + 3
-        ref_obs = torch.cat((local_lrot, local_dof_vel, flat_global_ee_pos, float_global_root), dim=-1)
+        ref_obs = torch.cat((flat_local_lrot, local_dof_vel, flat_global_ee_pos, float_global_root), dim=-1)
         return ref_obs
 
     def _compute_reward(self, actions):
