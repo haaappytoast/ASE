@@ -73,7 +73,9 @@ class HumanoidTest(Humanoid):
 
         self.num_ref_obs = 91
         self.ref_buf = torch.zeros((self.num_envs, self.num_ref_obs), device=self.device, dtype=torch.float)
-        
+
+        self._dof_buf = torch.zeros((self.num_envs, 48 + 28), device=self.device, dtype=torch.float)
+
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
 
@@ -151,7 +153,7 @@ class HumanoidTest(Humanoid):
             self._dof_obs_size = 72     #! 6 (joint_obs_size) * 12 (num_joints)
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
-            self._num_obs = 94 + 28
+            self._num_obs = (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
 
             self._parent_indices = [-1,  0,  1,  1,  3,  4,  1,  6,  7,  0,  9, 10, 0, 12, 13]
 
@@ -228,7 +230,17 @@ class HumanoidTest(Humanoid):
         self._dof_pos[env_ids] = dof_pos
         self._dof_vel[env_ids] = dof_vel
         return
-    
+
+    def _compute_observations(self, env_ids=None):
+        obs = self._compute_humanoid_obs(env_ids)
+        if (env_ids is None):
+            self.obs_buf[:] = obs[76:]
+            self._dof_buf[:] = obs[:76]
+        else:
+            self.obs_buf[env_ids] = obs[env_ids, 76:]
+            self._dof_buf[env_ids] = obs[env_ids, :76]
+        return
+        
     def _compute_humanoid_obs(self, env_ids=None):
         if (env_ids is None):
             body_pos = self._rigid_body_pos
@@ -245,8 +257,10 @@ class HumanoidTest(Humanoid):
             dof_pos = self._dof_pos[env_ids]                    # [num_envs, num_dof]
             dof_vel = self._dof_vel[env_ids]                    # [num_envs, num_dof]
 
-        obs = compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
-                                                self._root_height_obs, dof_pos, dof_vel)
+        # obs = compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
+        #                                         self._root_height_obs, dof_pos, dof_vel)
+        obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel)
+        
         return obs
 
     # 여기서 motion_times랑 motion_ids reset된 걸로 해야되는 건가? -> 확인해보기
@@ -270,7 +284,7 @@ class HumanoidTest(Humanoid):
         return ref_obs
 
     def _compute_reward(self, actions):
-        obs = self.obs_buf              # shape: [num_envs, 196]
+        obs = self.dof_buf              # shape: [num_envs, 196]
         ref_obs = self.ref_buf          # shape: [num_envs, 117]
 
         self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, len(self._dof_offsets)-1)
@@ -312,6 +326,46 @@ def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel,
     # obs = torch.cat(([body_lrot]), dim=-1)
     return obs
 
+def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor) -> Tensor
+
+    root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
+    root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
+    root_h = root_pos[:, 2:3]       # get z-value
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)   # quat from heading to ref_dir(global x-axis)
+    
+    heading_rot_expand = heading_rot.unsqueeze(-2)
+    heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))   # shape: [1, 15, 4]
+    flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                                    heading_rot_expand.shape[2])        # shrink shape: [1, 15, 4] -> [15, 4]
+    
+    root_pos_expand = root_pos.unsqueeze(-2)            # shape: [1, 1, 3]
+    local_body_pos = body_pos - root_pos_expand         #! root_relative_position / shape: [1, 15, 3] / 15: num_body
+    flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])    # shrink shape: [15, 3]/ 15: num_body
+    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)        #! root의 local x-axis에서 바라본 root_relative_position of link / shape: [1, 15, 3]
+    local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])    # [1, 15 * 3]
+
+    flat_body_rot = body_rot.reshape(body_rot.shape[0] * body_rot.shape[1], body_rot.shape[2])  # shape: [15, 4]
+    flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [num_envs * 15,4]
+    local_body_rot = flat_local_body_rot.reshape(body_rot.shape[0], body_rot.shape[1] * body_rot.shape[2])
+
+    flat_body_vel = body_vel.reshape(body_vel.shape[0] * body_vel.shape[1], body_vel.shape[2])  # torch.Size([15, 3])
+    flat_local_body_vel = quat_rotate(flat_heading_rot, flat_body_vel)                          #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
+    local_body_vel = flat_local_body_vel.reshape(body_vel.shape[0], body_vel.shape[1] * body_vel.shape[2])  # torch.Size([1, 15 * 3])
+    
+    flat_body_ang_vel = body_ang_vel.reshape(body_ang_vel.shape[0] * body_ang_vel.shape[1], body_ang_vel.shape[2])   # torch.Size([15, 3])
+    flat_local_body_ang_vel = quat_rotate(flat_heading_rot, flat_body_ang_vel)                                       #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
+    local_body_ang_vel = flat_local_body_ang_vel.reshape(body_ang_vel.shape[0], body_ang_vel.shape[1] * body_ang_vel.shape[2])   # torch.Size([1, 15 * 3])
+    
+    _dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
+    dof_lrot = dof_to_local_rotation(dof_pos, 48, _dof_offsets)    # [num_envs, 4 * 12]
+    
+    cuda = torch.device('cuda')
+    dof_lrot.to(cuda)
+    #                   (48)    + (28)  + (3 * 15)      + (4 * 15)      + (3 * 15)      + (3 * 15)
+    obs = torch.cat((dof_lrot, dof_vel, local_body_pos, local_body_rot, local_body_vel, local_body_ang_vel), dim=-1)
+    # obs = torch.cat(([body_lrot]), dim=-1)
+    return obs
 
 
 @torch.jit.script
