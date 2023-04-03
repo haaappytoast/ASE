@@ -393,6 +393,26 @@ class DeepMimicMotionLib(MotionLib):
         self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
     
+    def check_contact_frames(self, motion_ids):
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]  
+        
+        # right foot: self._key_body_ids[2]
+        # for i in range(num_frames):
+        print()
+        epsilon = 0.02
+        rcontact_point = []
+        lcontact_point = []
+        for i in range(1000):
+            if (torch.norm(self.gvs[i, self._key_body_ids[2]]) < epsilon):
+                rcontact_point.append(i)
+            if (torch.norm(self.gvs[i, self._key_body_ids[3]]) < epsilon):
+                lcontact_point.append(i)
+        print("rcontact_point: ", rcontact_point)
+        print("lcontact_point: ", lcontact_point)
+        return
+    
     # def sample_time(self, motion_ids, max_episode_length, dt=None, train_epoch=None, is_train=True):
 
     #     n = len(motion_ids)
@@ -422,11 +442,7 @@ class DeepMimicMotionLib(MotionLib):
         phase = torch.clip(phase, 0.0, 1.0)
 
         return phase
-    
-        
 
-        return body_orn, body_ang_vel
-    
     def _get_body_global_quat(self, motion_ids, motion_times):
 
         motion_len = self._motion_lengths[motion_ids]       
@@ -642,3 +658,14 @@ class DeepMimicMotionLib(MotionLib):
 
         return local_rot
     
+    def _get_root_pos(self, motion_ids, motion_times):
+        n = len(motion_ids)
+        num_bodies = self._get_num_bodies()
+        num_key_bodies = self._key_body_ids.shape[0]
+
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
+
+
+        return
