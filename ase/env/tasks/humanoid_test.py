@@ -234,8 +234,8 @@ class HumanoidTest(Humanoid):
     def _compute_observations(self, env_ids=None):
         obs = self._compute_humanoid_obs(env_ids)
         if (env_ids is None):
-            self.obs_buf[:] = obs[76:]
-            self._dof_buf[:] = obs[:76]
+            self.obs_buf[:] = obs[:, 76:]
+            self._dof_buf[:] = obs[:, :76]
         else:
             self.obs_buf[env_ids] = obs[env_ids, 76:]
             self._dof_buf[env_ids] = obs[env_ids, :76]
@@ -284,7 +284,7 @@ class HumanoidTest(Humanoid):
         return ref_obs
 
     def _compute_reward(self, actions):
-        obs = self.dof_buf              # shape: [num_envs, 196]
+        obs = self._dof_buf              # shape: [num_envs, 196]
         ref_obs = self.ref_buf          # shape: [num_envs, 117]
 
         self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, len(self._dof_offsets)-1)
