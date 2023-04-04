@@ -136,7 +136,6 @@ class Humanoid(BaseTask):
         
         if self.viewer != None:
             self._init_camera()
-            
         return
 
     def get_obs_size(self):
@@ -400,7 +399,7 @@ class Humanoid(BaseTask):
         return
 
     def _get_humanoid_collision_filter(self):
-        return 0
+        return 0    # actor의 모든 shape 간의 self collision을 활성화
 
     def _compute_reward(self, actions):
         self.rew_buf[:] = compute_humanoid_reward(self.obs_buf)

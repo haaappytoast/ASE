@@ -638,3 +638,26 @@ class DeepMimicMotionLib(MotionLib):
 
         return local_rot
     
+    def _get_body_pos(self, motion_ids, motion_times):
+
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]   
+
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+        
+        body_pos0 = self.gts[f0l]
+        body_pos1 = self.gts[f1l]
+
+        vals = [body_pos0, body_pos1]
+        for v in vals:
+            assert v.dtype != torch.float64
+
+        blend = blend.unsqueeze(-1)
+
+        blend_exp = blend.unsqueeze(-1)
+        body_pos = (1.0 - blend_exp) * body_pos0 + blend_exp * body_pos1
+        return body_pos
