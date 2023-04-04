@@ -71,10 +71,12 @@ class HumanoidTest(Humanoid):
         self._motion_ids = torch.zeros(self.num_envs, device=self.device, dtype=torch.int64)
         self._motion_times = torch.zeros(self.num_envs, device=self.device)
 
-        self.num_ref_obs = 91
+        self.num_ref_obs = (12 * 4) + 28 + (4 * 3) + 3
         self.ref_buf = torch.zeros((self.num_envs, self.num_ref_obs), device=self.device, dtype=torch.float)
 
         self._dof_buf = torch.zeros((self.num_envs, 48 + 28), device=self.device, dtype=torch.float)
+
+        self._key_body_pos = torch.zeros((self.num_envs, len(self._key_body_ids), 3), device=self.device, dtype=torch.float)
 
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
@@ -236,9 +238,14 @@ class HumanoidTest(Humanoid):
         if (env_ids is None):
             self.obs_buf[:] = obs[:, 76:]
             self._dof_buf[:] = obs[:, :76]
+
+            self._key_body_pos = self._rigid_body_pos[:, self._key_body_ids]
+
         else:
             self.obs_buf[env_ids] = obs[:, 76:]
             self._dof_buf[env_ids] = obs[:, :76]
+
+            self._key_body_pos[env_ids] = self._rigid_body_pos[env_ids.unsqueeze(-1), self._key_body_ids.unsqueeze(0)]
         return
         
     def _compute_humanoid_obs(self, env_ids=None):
@@ -269,26 +276,25 @@ class HumanoidTest(Humanoid):
         if (env_ids is None):
             local_dof_pos, local_dof_vel, global_ee_pos, global_root \
                 = self._motion_lib.get_motion_state_for_reference(self._motion_ids, self._motion_times)
-
         else:
             local_dof_pos, local_dof_vel, global_ee_pos, global_root \
                 = self._motion_lib.get_motion_state_for_reference(self._reset_ref_motion_ids, self._reset_ref_motion_times)
-        
+
         # local_lrot = dof_to_local_rotation(local_dof_pos, (len(self._dof_offsets) - 1) * 4, dof_offsets=self._dof_offsets)
         local_dof_pos = local_dof_pos[:, self._dof_body_ids]
         flat_local_lrot = local_dof_pos.reshape(local_dof_pos.shape[0], len(self._dof_body_ids) * local_dof_pos.shape[2]) 
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
-        float_global_root = global_root.reshape(global_root.shape[0], global_root.shape[1] * global_root.shape[2])
+        flat_global_root = global_root.reshape(global_root.shape[0], global_root.shape[1] * global_root.shape[2])
 
-        # [num_envs, 91] = 12 * 4 + 28 + 4 * 3 + 3
-        ref_obs = torch.cat((flat_local_lrot, local_dof_vel, flat_global_ee_pos, float_global_root), dim=-1)
+        # [num_envs, 91] = (12 * 4) + 28 + (4 * 3) + 3
+        ref_obs = torch.cat((flat_local_lrot, local_dof_vel, flat_global_ee_pos, flat_global_root), dim=-1)
         return ref_obs
 
     def _compute_reward(self, actions):
         obs = self._dof_buf              # shape: [num_envs, 196]
-        ref_obs = self.ref_buf          # shape: [num_envs, 117]
-
-        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, len(self._dof_offsets)-1)
+        ref_obs = self.ref_buf           # shape: [num_envs, 117]
+        key_pos = self._key_body_pos
+        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, key_pos, len(self._dof_offsets)-1)
         return
 
 #####################################################################
@@ -370,28 +376,29 @@ def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, do
 
 
 @torch.jit.script
-def compute_deepmm_reward(obs_buf, ref_buf, num_joints):
-    # type: (Tensor, Tensor, int) -> Tensor
+def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, num_joints):
+    # type: (Tensor, Tensor, Tensor, int) -> Tensor
     num_envs = obs_buf.shape[0]
     num_key_body = 4
-    pose_w = 1
-    vel_w = 0.3
+    pose_w = 0.7
+    vel_w = 0.15
+    ee_w = 0.15
 
     #### 1. local_dof rotation
     # get simulated character's local_body_rot_obs
-    local_dof_pos = obs_buf[:, 0:48]                                               # [num_envs, 12 * 4]
-    local_dof = local_dof_pos.reshape(num_envs * num_joints, -1)                   # [num_envs * num_joints, 4]
+    local_dof_pos = obs_buf[:, 0:48]                                                   # [num_envs, 12 * 4]
+    local_dof = local_dof_pos.reshape(num_envs * num_joints, -1)                       # [num_envs * num_joints, 4]
 
     # get reference character's local_dof_pos
-    ref_local_dof_pos = ref_buf[:, 0:48]          # [num_envs, 12 * 4]
-    ref_local_dof_pos = ref_local_dof_pos.reshape(num_envs * num_joints, -1)       # [num_envs, num_joints, 4]
+    ref_local_dof_pos = ref_buf[:, 0:48]                                               # [num_envs, 12 * 4]
+    ref_local_dof_pos = ref_local_dof_pos.reshape(num_envs * num_joints, -1)           # [num_envs, num_joints, 4]
     
     # get quaternion difference
     inv_local_dof = quat_inverse(local_dof)
     dof_diff = quat_mul_norm(ref_local_dof_pos, inv_local_dof)    
 
     # get scalar rotation of a quaternion about its axis in radians 
-    rot_diff_angle, rot_diff_axis = quat_angle_axis(dof_diff)                      # [num_envs * 12], [num_envs * 12, 3]
+    rot_diff_angle, rot_diff_axis = quat_angle_axis(dof_diff)                          # [num_envs * 12], [num_envs * 12, 3]
     flat_rot_diff_angle = rot_diff_angle.reshape(num_envs, -1)
 
     sum_rot_diff_angle = torch.sum(flat_rot_diff_angle**2, dim=-1)
@@ -408,10 +415,22 @@ def compute_deepmm_reward(obs_buf, ref_buf, num_joints):
 
     # get angular velocity difference
     diff_dof_vel = torch.abs(local_dof_vel - ref_local_dof_vel)                        # [num_envs, 28]      
-    sum_diff_dof_vel = torch.sum(diff_dof_vel**2, dim=-1)                             # [num_envs]
+    sum_diff_dof_vel = torch.sum(diff_dof_vel**2, dim=-1)                              # [num_envs]
     
     vel_reward = torch.exp(-0.05 * sum_diff_dof_vel)
 
+    #### 3. global end effector position
+    # get simulated character's ee position
+    global_ee_key_pos = sim_key_pos
+    flat_global_ee_key_pos = global_ee_key_pos.reshape(num_envs, -1)                   # [num_envs, 12]
+
+    # get reference character's ee position
+    ref_global_ee_key_pos = ref_buf[:, 76:88]
+    diff_ee_pos = flat_global_ee_key_pos - ref_global_ee_key_pos
+    sum_diff_ee_pos = torch.sum(diff_ee_pos**2, dim=-1)
+
+    ee_reward = torch.exp(-20 * sum_diff_ee_pos)
+
     # reference charater's global root position
-    reward = pose_w * pose_reward + vel_w * vel_reward
+    reward = pose_w * pose_reward + vel_w * vel_reward + ee_w * ee_reward
     return reward
