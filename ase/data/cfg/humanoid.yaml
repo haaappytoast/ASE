@@ -18,12 +18,11 @@ env:
   contactBodies: ["right_foot", "left_foot"]
   terminationHeight: 0.15
   enableEarlyTermination: True
-  useComreward: True 
 
   asset:
     assetRoot: "ase/data/assets"
     assetFileName: "mjcf/amp_humanoid.xml"
-    kinAssetFileName: "mjcf/kin_humanoid.xml"
+    useCoM: True
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0
