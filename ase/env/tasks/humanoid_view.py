@@ -33,6 +33,7 @@ from torch import Tensor
 
 from isaacgym import gymapi
 from isaacgym import gymtorch
+from isaacgym import gymutil
 
 from env.tasks.humanoid import Humanoid, dof_to_obs, compute_grot_from_lrot, dof_to_local_rotation
 from utils import gym_util
@@ -118,6 +119,7 @@ class HumanoidDeepmimic(Humanoid):
 
         #! compute reference observation                
         self._compute_ref_observations()
+        self.visualize_com()
 
         self._compute_reward(self.actions)
         self._compute_reset()
@@ -132,7 +134,23 @@ class HumanoidDeepmimic(Humanoid):
         self._motion_sync()
 
         return
-
+    def visualize_com(self):
+        # debug viz
+        if self.viewer and self.is_train is not True:
+            self._update_debug_viz()
+            # draw height lines
+            # self.gym.refresh_rigid_body_state_tensor(self.sim)
+            sphere_geom = gymutil.WireframeSphereGeometry(0.1, 16, 16, None, color=(1, 0, 0))
+            
+            for i in range(self.num_envs):
+                base_pos = (self._com_pos[i, :]).cpu().numpy()
+                x = base_pos[0]
+                y = base_pos[1]
+                z = base_pos[2]
+                sphere_pose = gymapi.Transform(gymapi.Vec3(x, y, z), r=None)
+                gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)         
+        return
+    
     def _motion_sync(self):
         num_motions = self._motion_lib.num_motions()
         motion_ids = self._motion_ids

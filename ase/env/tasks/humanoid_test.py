@@ -127,13 +127,13 @@ class HumanoidTest(Humanoid):
             # self.gym.refresh_rigid_body_state_tensor(self.sim)
             sphere_geom = gymutil.WireframeSphereGeometry(0.1, 16, 16, None, color=(1, 0, 0))
             
-        for i in range(self.num_envs):
-            base_pos = (self._com_pos[i, :]).cpu().numpy()
-            x = base_pos[0]
-            y = base_pos[1]
-            z = base_pos[2]
-            sphere_pose = gymapi.Transform(gymapi.Vec3(x, y, z), r=None)
-            gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)         
+            for i in range(self.num_envs):
+                base_pos = (self._com_pos[i, :]).cpu().numpy()
+                x = base_pos[0]
+                y = base_pos[1]
+                z = base_pos[2]
+                sphere_pose = gymapi.Transform(gymapi.Vec3(x, y, z), r=None)
+                gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)         
         return
 
     def _load_motion(self, motion_file):
@@ -496,5 +496,9 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, num_joints):
 
     # reference charater's global root position
     reward = pose_w * pose_reward + vel_w * vel_reward + ee_w * ee_reward + com_w * com_reward
-    
+    print("pose_reward: ", pose_reward)
+    print("vel_reward: ", vel_reward)
+    print("ee_reward: ", ee_reward)
+    print("com_reward: ", com_reward)
+    print("---------------------------------------------\n")
     return reward
