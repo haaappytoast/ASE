@@ -33,6 +33,7 @@ from torch import Tensor
 
 from isaacgym import gymapi
 from isaacgym import gymtorch
+from isaacgym import gymutil
 
 from env.tasks.humanoid import Humanoid, dof_to_obs, compute_grot_from_lrot, dof_to_local_rotation
 from utils import gym_util
@@ -108,18 +109,32 @@ class HumanoidTest(Humanoid):
         #! compute reference observation                
         self._compute_ref_observations()
 
+        self.visualize_com()
+        
         self.actions = None
         self._compute_reward(self.actions)
         self._compute_reset()
         
         self.extras["terminate"] = self._terminate_buf
 
-        # debug viz
-        if self.viewer and self.debug_viz:
-            self._update_debug_viz()
-
         return
 
+    def visualize_com(self):
+        # debug viz
+        if self.viewer and self.is_train is not True:
+            self._update_debug_viz()
+            # draw height lines
+            # self.gym.refresh_rigid_body_state_tensor(self.sim)
+            sphere_geom = gymutil.WireframeSphereGeometry(0.1, 16, 16, None, color=(1, 0, 0))
+            
+        for i in range(self.num_envs):
+            base_pos = (self._com_pos[i, :]).cpu().numpy()
+            x = base_pos[0]
+            y = base_pos[1]
+            z = base_pos[2]
+            sphere_pose = gymapi.Transform(gymapi.Vec3(x, y, z), r=None)
+            gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)         
+        return
 
     def _load_motion(self, motion_file):
         assert(self._dof_offsets[-1] == self.num_dof)
@@ -132,8 +147,6 @@ class HumanoidTest(Humanoid):
     
     # humanoid.py의 self.reset에서 실행이 되는데 이 때, env_ids를 tensor로 바꿔주는 코드가 들어있음
     def _reset_envs(self, env_ids):
-        self._reset_num += 1
-
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
         
