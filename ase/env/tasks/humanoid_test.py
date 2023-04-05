@@ -82,8 +82,6 @@ class HumanoidTest(Humanoid):
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
 
-        self.horizontal_length = 32
-        self._reset_num = 0
         self.is_train = self.cfg["args"].train
         return  
 
@@ -370,6 +368,7 @@ def compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel,
     # obs = torch.cat(([body_lrot]), dim=-1)
     return obs
 
+@torch.jit.script
 def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, body_masses):
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor) -> Tensor
 
