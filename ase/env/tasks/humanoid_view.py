@@ -88,7 +88,18 @@ class HumanoidDeepmimic(Humanoid):
         self.is_train = self.cfg["args"].train
 
         return
-    
+ 
+    def _create_envs(self, num_envs, spacing, num_per_row):
+        super()._create_envs(num_envs, spacing, num_per_row)
+
+        # get mass from xml file
+        rbody_prop = self.gym.get_actor_rigid_body_properties(self.envs[0], self.humanoid_handles[0])
+        self.body_mass = []
+        for i in range(len(rbody_prop)):
+            self.body_mass.append(rbody_prop[i].mass)
+        self.body_mass = torch.tensor(self.body_mass, dtype=torch.float, device=self.device)
+        return
+       
     def _physics_step(self):
         for i in range(self.control_freq_inv):
             self.render()
@@ -221,7 +232,8 @@ class HumanoidDeepmimic(Humanoid):
             self._dof_obs_size = 72     #! 6 (joint_obs_size) * 12 (num_joints)
             self._num_actions = 28      #! num_dof
                             #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
-            self._num_obs = 60
+            self._num_obs = (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
+            self._parent_indices = [-1,  0,  1,  1,  3,  4,  1,  6,  7,  0,  9, 10, 0, 12, 13]
 
 
         else:
