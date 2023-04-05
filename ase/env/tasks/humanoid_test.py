@@ -77,8 +77,6 @@ class HumanoidTest(Humanoid):
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
 
-        self.horizontal_length = 32
-        self._reset_num = 0
         self.is_train = self.cfg["args"].train
 
         self.cycle = 40
@@ -128,8 +126,6 @@ class HumanoidTest(Humanoid):
     
     # humanoid.py의 self.reset에서 실행이 되는데 이 때, env_ids를 tensor로 바꿔주는 코드가 들어있음
     def _reset_envs(self, env_ids):
-        self._reset_num += 1
-
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
         
