@@ -27,9 +27,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #!! should be always changed
-from env.tasks.humanoid_deepmm import HumanoidDeepmm
 from env.tasks.humanoid_test import HumanoidTest
-from env.tasks.humanoid_deepmimic import HumanoidDeepmimic
+from ase.env.tasks.humanoid_view import HumanoidDeepmimic
 
 from env.tasks.humanoid import Humanoid
 from env.tasks.humanoid_view_motion import HumanoidViewMotion
