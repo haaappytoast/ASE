@@ -496,9 +496,4 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, num_joints):
 
     # reference charater's global root position
     reward = pose_w * pose_reward + vel_w * vel_reward + ee_w * ee_reward + com_w * com_reward
-    print("pose_reward: ", pose_reward)
-    print("vel_reward: ", vel_reward)
-    print("ee_reward: ", ee_reward)
-    print("com_reward: ", com_reward)
-    print("---------------------------------------------\n")
     return reward
