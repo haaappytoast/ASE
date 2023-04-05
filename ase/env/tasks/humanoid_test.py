@@ -431,9 +431,9 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, num_joints):
     # type: (Tensor, Tensor, Tensor, Tensor, int) -> Tensor
     num_envs = obs_buf.shape[0]
     num_key_body = 4
-    pose_w = 0.7
+    pose_w = 0.65
     vel_w = 0.15
-    ee_w = 0.15
+    ee_w = 0.1
     com_w = 0.1
     #### 1. local_dof rotation
     # get simulated character's local_body_rot_obs
@@ -454,7 +454,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, num_joints):
 
     sum_rot_diff_angle = torch.sum(flat_rot_diff_angle**2, dim=-1)
     
-    pose_reward = torch.exp(-1 * sum_rot_diff_angle)
+    pose_reward = torch.exp(-0.20 * sum_rot_diff_angle)
     
     #### 2. local_dof velocity
     
@@ -468,7 +468,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, num_joints):
     diff_dof_vel = torch.abs(local_dof_vel - ref_local_dof_vel)                        # [num_envs, 28]      
     sum_diff_dof_vel = torch.sum(diff_dof_vel**2, dim=-1)                              # [num_envs]
     
-    vel_reward = torch.exp(-0.05 * sum_diff_dof_vel)
+    vel_reward = torch.exp(-0.008 * sum_diff_dof_vel)
 
     #### 3. global end effector position
     # get simulated character's ee position
@@ -480,7 +480,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, num_joints):
     diff_ee_pos = flat_global_ee_key_pos - ref_global_ee_key_pos
     sum_diff_ee_pos = torch.sum(diff_ee_pos**2, dim=-1)
 
-    ee_reward = torch.exp(-20 * sum_diff_ee_pos)
+    ee_reward = torch.exp(-8 * sum_diff_ee_pos)
     
     #### 4. get com difference
     # get simulated character's com_pos
