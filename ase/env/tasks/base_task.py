@@ -82,7 +82,11 @@ class BaseTask():
         # todo: read from config
         self.enable_viewer_sync = True
         self.viewer = None
-
+        self.sim_pause = False
+        self.sim_forward_continuous = False
+        self.forward_count = -1
+        self.sim_forward = False
+        self.help = False
         # if running with a viewer, set up keyboard shortcuts and camera
         if self.headless == False:
             # subscribe to keyboard shortcuts
@@ -92,6 +96,14 @@ class BaseTask():
                 self.viewer, gymapi.KEY_ESCAPE, "QUIT")
             self.gym.subscribe_viewer_keyboard_event(
                 self.viewer, gymapi.KEY_V, "toggle_viewer_sync")
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_PERIOD, "sim_forward")
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_SPACE, "sim_pause")
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_C, "sim_forward_continuous")
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_H, "keyboard_help")
 
             # set the camera position based on up axis
             sim_params = self.gym.get_sim_params(self.sim)
@@ -122,8 +134,8 @@ class BaseTask():
             quit()
 
         return sim
-
-    def step(self, actions):
+    
+    def step_forward(self, actions):
         if self.dr_randomizations.get('actions', None):
             actions = self.dr_randomizations['actions']['noise_lambda'](actions)
 
@@ -143,6 +155,24 @@ class BaseTask():
         if self.dr_randomizations.get('observations', None):
             self.obs_buf = self.dr_randomizations['observations']['noise_lambda'](self.obs_buf)
 
+    def step(self, actions):
+        if (self.sim_pause):
+            # stop simulating and just render current view
+            for i in range(self.control_freq_inv):
+                self.render()
+            
+            # 여러 frame씩 재생
+            if (self.sim_forward_continuous and self.forward_count > 0):
+                self.step_forward(actions)
+                self.forward_count -= 1
+            
+            # 1 frame씩 재생
+            if(self.sim_forward):
+                self.step_forward(actions)
+                self.sim_forward = False
+        else:
+            self.step_forward(actions)
+
     def get_states(self):
         return self.states_buf
 
@@ -154,11 +184,33 @@ class BaseTask():
 
             # check for keyboard events
             for evt in self.gym.query_viewer_action_events(self.viewer):
+                forward_count = 15
                 if evt.action == "QUIT" and evt.value > 0:
                     sys.exit()
                 elif evt.action == "toggle_viewer_sync" and evt.value > 0:
                     self.enable_viewer_sync = not self.enable_viewer_sync
-
+                elif evt.action == "sim_forward" and evt.value > 0:
+                    print("Simulate 1 frame! ")
+                    self.enable_viewer_sync = True
+                    self.sim_forward = True
+                    pass
+                elif evt.action == "sim_pause" and evt.value > 0:
+                    print("Resume/Pause simulation! ")
+                    self.sim_pause = not self.sim_pause
+                    pass
+                elif evt.action == "sim_forward_continuous" and evt.value > 0:
+                    print("Simulate", forward_count, "frames! ")
+                    self.sim_forward_continuous = True
+                    self.forward_count = forward_count
+                    pass
+                elif evt.action == "keyboard_help" and evt.value>0:
+                    print("-----------------------")
+                    print("Tab: Resume/Pause Simulation")
+                    print("C: Step", forward_count, "frames ahead")
+                    print(">: Step 1 frame ahead")
+                    print("-----------------------")
+                    pass
+                
             # fetch results
             if self.device != 'cpu':
                 self.gym.fetch_results(self.sim, True)
