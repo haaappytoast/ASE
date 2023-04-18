@@ -116,6 +116,8 @@ class BaseTask():
 
             self.gym.viewer_camera_look_at(
                 self.viewer, None, cam_pos, cam_target)
+            
+            self.simulate_once = False
 
     # set gravity based on up axis and return axis index
     def set_sim_params_up_axis(self, sim_params, axis):
@@ -157,10 +159,6 @@ class BaseTask():
 
     def step(self, actions):
         if (self.sim_pause):
-            # stop simulating and just render current view
-            for i in range(self.control_freq_inv):
-                self.render()
-            
             # 여러 frame씩 재생
             if (self.sim_forward_continuous and self.forward_count > 0):
                 self.step_forward(actions)
@@ -170,6 +168,10 @@ class BaseTask():
             if(self.sim_forward):
                 self.step_forward(actions)
                 self.sim_forward = False
+            else:
+                # stop simulating and just render current view
+                for i in range(self.control_freq_inv):
+                    self.render()
         else:
             self.step_forward(actions)
 
@@ -190,7 +192,7 @@ class BaseTask():
                 elif evt.action == "toggle_viewer_sync" and evt.value > 0:
                     self.enable_viewer_sync = not self.enable_viewer_sync
                 elif evt.action == "sim_forward" and evt.value > 0:
-                    print("Simulate 1 frame! ")
+                    print("\nSimulate 1 frame! ")
                     self.enable_viewer_sync = True
                     self.sim_forward = True
                     pass

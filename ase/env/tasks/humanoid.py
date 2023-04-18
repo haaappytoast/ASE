@@ -86,7 +86,7 @@ class Humanoid(BaseTask):
         dof_force_tensor = self.gym.acquire_dof_force_tensor(self.sim)
         self.dof_force_tensor = gymtorch.wrap_tensor(dof_force_tensor).view(self.num_envs, self.num_dof)
         
-        self.gym.refresh_dof_state_tensor(self.sim)
+        self.gym.refresh_dof_state_tensor(self.sim) # populates the tensor with the latest data from the simulation
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_rigid_body_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
@@ -175,6 +175,7 @@ class Humanoid(BaseTask):
 
     def _reset_envs(self, env_ids):
         if (len(env_ids) > 0):
+            self.sim_pause = True
             #! humanoid_deepmm에 Initialization Strategy에 따라 끝난 envs에 대해서 humanoid state를 initialize 해주는 코드!
             self._reset_actors(env_ids)
             #! humanoid state buffer를 initialize 해주는 코드!
@@ -197,6 +198,12 @@ class Humanoid(BaseTask):
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 0
         self._terminate_buf[env_ids] = 0
+
+        # 마지막 환경을 reference motion으로! 
+        if 0 in env_ids:
+            self.progress_buf[self.num_envs-1] = 0
+            self.reset_buf[self.num_envs-1] = 0
+            self._terminate_buf[self.num_envs-1] = 0
         return
 
     def _create_ground_plane(self):

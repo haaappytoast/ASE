@@ -341,17 +341,19 @@ class HumanoidTest(Humanoid):
         obs = self._dof_buf              # shape: [num_envs, 76]
         ref_obs = self.ref_buf           # shape: [num_envs, 88 or 91]
         key_pos = self._key_body_pos
-        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, key_pos, self._com_pos, self.useCoM, len(self._dof_offsets)-1)
+        _print = True if(self.sim_forward or self.sim_forward_continuous) else False
+        _step = self.progress_buf[0]
+        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, key_pos, self._com_pos, self.useCoM, len(self._dof_offsets)-1, _print, _step)
         return
 
     def _compute_com(self, body_states, body_masses):
         """Compute center-of-mass position"""
         com_pos = compute_com(body_states, body_masses)
         return com_pos
-
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
+    
 @torch.jit.script
 def compute_com(body_pos, body_masses):
     # type: (Tensor, Tensor) -> Tensor
@@ -423,8 +425,8 @@ def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, do
 
 
 @torch.jit.script
-def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, num_joints):
-    # type: (Tensor, Tensor, Tensor, Tensor, bool, int) -> Tensor
+def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, num_joints, _print, _step):
+    # type: (Tensor, Tensor, Tensor, Tensor, bool, int, bool, int) -> Tensor
     num_envs = obs_buf.shape[0]
     num_key_body = 4
     pose_w = 0.65
@@ -496,4 +498,16 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, num_jo
 
     # reference charater's global root position
     reward = pose_w * pose_reward + vel_w * vel_reward + ee_w * ee_reward + com_w * com_reward
+
+    if (_print):
+        print("step: ", _step)
+        print("flat_rot_diff_angle: ", flat_rot_diff_angle.shape)
+        print("flat_rot_diff_angle: ", flat_rot_diff_angle[0])
+        print("sum_rot_diff_angle: ", sum_rot_diff_angle[0].item())
+
+        print("pose_reward: ", pose_reward.item(), " | ", (pose_w * pose_reward).item())
+        print("vel_reward: ", (vel_reward).item(), " | ", (vel_w * vel_reward).item())
+        print("ee_reward: ", ee_reward.item(), " | ", (ee_w * ee_reward).item())
+        print("com_reward: ", com_reward.item(), " | ", (com_w * com_reward).item())
+        print("total_reward: ", reward.item())
     return reward

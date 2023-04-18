@@ -102,6 +102,7 @@ class HumanoidDeepmimic(Humanoid):
         return
        
     def _physics_step(self):
+        # set last env_ids to reference motion 
         for i in range(self.control_freq_inv):
             self.render()
             #! simulation forward for sim_params.dt
@@ -109,11 +110,13 @@ class HumanoidDeepmimic(Humanoid):
         return
     
     def post_physics_step(self):
+        self._motion_sync()
+        print("inside post_physics_step")
         self.progress_buf += 1
         self.ones = torch.ones(self._motion_times.shape).to(self.device)
         self._motion_times += self.ones * self.dt
         # self._phase =  self._motion_lib._calc_phase(self._motion_ids, time_elapsed.to(self.device)).view(self.num_envs, -1)
-
+        
         self._refresh_sim_tensors()
         self._compute_observations()
 
@@ -129,9 +132,6 @@ class HumanoidDeepmimic(Humanoid):
         # debug viz
         if self.viewer and self.debug_viz:
             self._update_debug_viz()
-
-        # set last env_ids to reference motion 
-        self._motion_sync()
 
         return
     
@@ -153,16 +153,11 @@ class HumanoidDeepmimic(Humanoid):
         return
     
     def _motion_sync(self):
-        num_motions = self._motion_lib.num_motions()
-        motion_ids = self._motion_ids
-        motion_times = self.progress_buf * self.dt
-
         env_ids = [self.num_envs-1] # the last env_id
-
-        # print("motion times: ", motion_times[env_ids])
-        # print("motion length: ", self._motion_lib.get_motion_length(motion_ids[env_ids]))
+        motion_ids = self._motion_ids
+        motion_times = self._reset_ref_motion_times[0] + self.dt * (self.progress_buf[0] + 1)
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
-           = self._motion_lib.get_motion_state(motion_ids[env_ids], motion_times[env_ids])
+           = self._motion_lib.get_motion_state(motion_ids[env_ids], self._motion_times[0])
         
 
         #? why set to 0? -> just to make humanoid follow positions
@@ -178,9 +173,7 @@ class HumanoidDeepmimic(Humanoid):
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
-        # print("root_vel: ", self._root_states[:, 7:10])
-        # print("root_ang_vel: ", self._root_states[:, 10:13])
-        # print("dof_vel: ", self._dof_state[:, 1])
+        
         env_ids_int32 = self._humanoid_actor_ids[env_ids]
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                      gymtorch.unwrap_tensor(self._root_states),
@@ -188,6 +181,7 @@ class HumanoidDeepmimic(Humanoid):
         self.gym.set_dof_state_tensor_indexed(self.sim,
                                               gymtorch.unwrap_tensor(self._dof_state),
                                               gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
+  
         return
 
     def _init_camera(self):
@@ -214,23 +208,26 @@ class HumanoidDeepmimic(Humanoid):
         self._reset_ref_env_ids = []
         
         # done_indices가 있는 것!
-        super()._reset_envs(env_ids)    # _reset_actors -> _reset_env_tensors -> _refresh_sim_tensors -> _compute_observations
-        
-        # 마지막 env에서 reference motion의 time이 id:0 과 같아지게
-        self.set_ref_motion_sync_to_first_env()
+        if (len(env_ids) > 0):
+            self.sim_pause = True
+            #! humanoid_deepmm에 Initialization Strategy에 따라 끝난 envs에 대해서 humanoid state를 initialize 해주는 코드!
+            self._reset_actors(env_ids)
+            
+            #! humanoid state buffer를 initialize 해주는 코드!
+            self._reset_env_tensors(env_ids)
+            
+            # # reference motion이 첫번째 num_envs와 같게 만들기
+            # self._motion_sync()                        
 
+            self._refresh_sim_tensors()
+            #! compute humanoid state -> 이걸로 그냥 실행 / humanoid_amp_task는 task obs랑 concat해줌
+            self._compute_observations(env_ids)
+            
         # print(self.progress_buf, "//", self._motion_times)
         #! compute reference observation
         if (len(env_ids)> 0):
             self._init_ref_obs(env_ids)
             # print("reset!", self.progress_buf, "//", self._motion_times)
-        return
-    
-    def set_ref_motion_sync_to_first_env(self):
-        self._motion_times[self.num_envs-1] = self._motion_times[0]
-        self.progress_buf[self.num_envs-1] = self.progress_buf[0]
-        self.reset_buf[self.num_envs-1] = self.reset_buf[0]
-        self._terminate_buf[self.num_envs-1] = self._terminate_buf[0]
         return
     
     def _reset_env_tensors(self, env_ids):
@@ -296,7 +293,6 @@ class HumanoidDeepmimic(Humanoid):
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times) 
 
-        print("* reset humanoid state! *")
         # reset humanoid state
         self._set_env_state(env_ids=env_ids, 
                             root_pos=root_pos, 
@@ -305,16 +301,20 @@ class HumanoidDeepmimic(Humanoid):
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
-        self._reset_env_ids = env_ids
-        self._reset_ref_motion_ids = motion_ids
-        self._reset_ref_motion_times = motion_times
 
         if (env_ids is None):        # 환경 1개 일때
             self._motion_times[:] = motion_times
         else:                        # 환경 여러 개일 때
             self._motion_times[env_ids] = motion_times
 
-        self.sim_pause = False
+        self._reset_env_ids = env_ids
+        self._reset_ref_motion_ids = motion_ids
+        self._reset_ref_motion_times = motion_times
+
+        if 0 in env_ids:
+            print("_reset_ref_state_init :::: self._reset_ref_motion_times: ", self._reset_ref_motion_times)
+        self.sim_pause = True
+        self._motion_sync()
 
         return
 
@@ -374,7 +374,7 @@ class HumanoidDeepmimic(Humanoid):
 
         # obs = compute_humanoid_dof_observation(body_pos, body_rot, body_vel, body_ang_vel, self._local_root_obs,
         #                                         self._root_height_obs, dof_pos, dof_vel)
-        obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, self.body_mass)
+        obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, self.useCoM, self.body_mass)
         
         return obs
 
@@ -449,8 +449,8 @@ def compute_com(body_pos, body_masses):
     return com_pos
 
 @torch.jit.script
-def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, body_masses):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor) -> Tensor
+def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, useCoM, body_masses):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, Tensor) -> Tensor
 
     root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
     root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
@@ -482,14 +482,16 @@ def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, do
     
     _dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
     dof_lrot = dof_to_local_rotation(dof_pos, 48, _dof_offsets)    # [num_envs, 4 * 12]
-    
+    print("root lrot: ", dof_lrot[0, :4])
     cuda = torch.device('cuda')
     dof_lrot.to(cuda)
     
-    com_pos = compute_com(body_pos, body_masses) # [num_envs, 3]
-    #                   (48)    + (28)  + (3)       + (3 * 15)      + (4 * 15)      + (3 * 15)      + (3 * 15)
-    obs = torch.cat((dof_lrot, dof_vel, com_pos, local_body_pos, local_body_rot, local_body_vel, local_body_ang_vel), dim=-1)
-    # obs = torch.cat(([body_lrot]), dim=-1)
+    #                   (48)    + (28)       + (3 * 15)      + (4 * 15)      + (3 * 15)      + (3 * 15)
+    obs = torch.cat((dof_lrot, dof_vel, local_body_pos, local_body_rot, local_body_vel, local_body_ang_vel), dim=-1)
+
+    if useCoM:
+        com_pos = compute_com(body_pos, body_masses) # [num_envs, 3]
+        obs = concat_tensor(obs, com_pos)
     return obs
 
 
@@ -571,6 +573,9 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, num_jo
 
     if (_print):
         print("step: ", _step)
+        print("flat_rot_diff_angle: ", flat_rot_diff_angle.shape)
+        print("flat_rot_diff_angle: ", flat_rot_diff_angle[0])
+        print("sum_rot_diff_angle: ", sum_rot_diff_angle[0].item())
         print("pose_reward: ", pose_reward[0].item(), " | ", (pose_w * pose_reward)[0].item())
         print("vel_reward: ", (vel_reward)[0].item(), " | ", (vel_w * vel_reward)[0].item())
         print("ee_reward: ", ee_reward[0].item(), " | ", (ee_w * ee_reward)[0].item())
