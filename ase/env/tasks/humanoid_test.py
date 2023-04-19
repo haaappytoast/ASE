@@ -82,6 +82,8 @@ class HumanoidTest(Humanoid):
         self.is_train = self.cfg["args"].train
         
         self.useCoM = self.cfg["env"]["asset"]["useCoM"]
+        self.useRrot = self.cfg["env"]["asset"]["useRrot"]
+
         return  
 
     def _create_envs(self, num_envs, spacing, num_per_row):
@@ -195,6 +197,10 @@ class HumanoidTest(Humanoid):
         if self.cfg["env"]["asset"]["useCoM"]:
             self.num_ref_obs += 3
             self.useCoM = True
+
+        if self.cfg["env"]["asset"]["useRrot"]:
+            self.num_ref_obs += 4
+            self.useRrot = True
         return
     
     def _compute_ref_observations(self, env_ids=None):
@@ -304,7 +310,7 @@ class HumanoidTest(Humanoid):
             dof_pos = self._dof_pos[env_ids]                    # [num_envs, num_dof]
             dof_vel = self._dof_vel[env_ids]                    # [num_envs, num_dof]
 
-        obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, self.useCoM, self.body_mass)
+        obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, self.useCoM, self.useRrot, self.body_mass)
         
         return obs
 
@@ -324,8 +330,6 @@ class HumanoidTest(Humanoid):
         local_dof_pos = local_dof_pos[:, self._dof_body_ids]
         flat_local_lrot = local_dof_pos.reshape(local_dof_pos.shape[0], len(self._dof_body_ids) * local_dof_pos.shape[2]) 
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
-        # flat_global_root = global_root.reshape(global_root.shape[0], global_root.shape[1] * global_root.shape[2])
-
 
         # [num_envs, 91] = (12 * 4)           + 28                 + (4 * 3)
         ref_obs = torch.cat((flat_local_lrot, local_dof_vel, flat_global_ee_pos), dim=-1)
@@ -335,6 +339,9 @@ class HumanoidTest(Humanoid):
             com_pos = self._compute_com(body_pos, self.body_mass)
             ref_obs = concat_tensor(ref_obs, com_pos)
         
+        if self.useRrot:
+            ref_obs = concat_tensor(ref_obs, global_root)
+
         return ref_obs
 
     def _compute_reward(self, actions):
@@ -350,6 +357,7 @@ class HumanoidTest(Humanoid):
         """Compute center-of-mass position"""
         com_pos = compute_com(body_states, body_masses)
         return com_pos
+    
 #####################################################################
 ###=========================jit functions=========================###
 #####################################################################
@@ -378,8 +386,8 @@ def concat_tensor(tensor1, tensor2):
     return concated_tensor
 
 @torch.jit.script
-def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, useCoM, body_masses):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, Tensor) -> Tensor
+def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, useCoM, useRroot, body_masses):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, Tensor) -> Tensor
 
     root_pos = body_pos[:, 0, :]    # torch.Size([1, 3])
     root_rot = body_rot[:, 0, :]    # torch.Size([1, 4])
@@ -414,13 +422,20 @@ def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, do
     
     cuda = torch.device('cuda')
     dof_lrot.to(cuda)
-    
+
+    print("local_body_rot.shape: ", local_body_rot.shape)
+    print("local_body_rot: ", local_body_rot[0][:4])
+
     #                   (48)    + (28)       + (3 * 15)      + (4 * 15)      + (3 * 15)      + (3 * 15)
     obs = torch.cat((dof_lrot, dof_vel, local_body_pos, local_body_rot, local_body_vel, local_body_ang_vel), dim=-1)
-
+    print("obs.shape: ", obs.shape)
     if useCoM:
         com_pos = compute_com(body_pos, body_masses) # [num_envs, 3]
         obs = concat_tensor(obs, com_pos)
+
+    if False:
+        obs = concat_tensor(obs, root_rot)
+
     return obs
 
 
@@ -434,6 +449,9 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, num_jo
     ee_w = 0.1
     com_w = 0.1
 
+    print("simulated character's local dof: ", obs_buf[:, :4])
+    print("reference character's local dof: ", ref_buf[:, :4])
+    
     #### 1. local_dof rotation
     # get simulated character's local_body_rot_obs
     local_dof_pos = obs_buf[:, 0:48]                                                   # [num_envs, 12 * 4]
@@ -456,7 +474,6 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, num_jo
     pose_reward = torch.exp(-0.20 * sum_rot_diff_angle)
     
     #### 2. local_dof velocity
-    
     # get simulated character's dof_vel
     local_dof_vel = obs_buf[:, 48:48 + 28]                                             # [num_envs, 28]
         
