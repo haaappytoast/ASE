@@ -175,7 +175,7 @@ class Humanoid(BaseTask):
 
     def _reset_envs(self, env_ids):
         if (len(env_ids) > 0):
-            self.sim_pause = True
+            # self.sim_pause = True
             #! humanoid_deepmm에 Initialization Strategy에 따라 끝난 envs에 대해서 humanoid state를 initialize 해주는 코드!
             self._reset_actors(env_ids)
             #! humanoid state buffer를 initialize 해주는 코드!
