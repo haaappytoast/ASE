@@ -57,6 +57,9 @@ class HumanoidTest(Humanoid):
         self._reset_default_env_ids = []
         self._reset_ref_env_ids = []
         
+        self.useCoM = cfg["env"]["asset"]["useCoM"]
+        self.useRootRot =cfg["env"]["asset"]["useRootRot"]
+        
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
                          physics_engine=physics_engine,
@@ -70,20 +73,12 @@ class HumanoidTest(Humanoid):
         self._motion_times = torch.zeros(self.num_envs, device=self.device)
 
         self.ref_buf = torch.zeros((self.num_envs, self.num_ref_obs), device=self.device, dtype=torch.float)
-
-        self._dof_buf = torch.zeros((self.num_envs, 48 + 28), device=self.device, dtype=torch.float)
-
         self._key_body_pos = torch.zeros((self.num_envs, len(self._key_body_ids), 3), device=self.device, dtype=torch.float)
-        self._com_pos = torch.zeros((self.num_envs, 3), device=self.device, dtype=torch.float)
-        self._root_grot = torch.zeros((self.num_envs, 4), device=self.device, dtype=torch.float)
 
         motion_file = cfg['env']['motion_file']
         self._load_motion(motion_file)
 
         self.is_train = self.cfg["args"].train
-        
-        self.useCoM = self.cfg["env"]["asset"]["useCoM"]
-        self.useRootRot = self.cfg["env"]["asset"]["useRootRot"]
         return  
 
     def _create_envs(self, num_envs, spacing, num_per_row):
@@ -117,6 +112,16 @@ class HumanoidTest(Humanoid):
         self.extras["terminate"] = self._terminate_buf
 
         return
+
+    def get_obs_size(self):
+        obs_size = super().get_obs_size()
+        if (self.useCoM):
+            obs_size += 3
+        
+        if (self.useRootRot):
+            obs_size += 4
+
+        return obs_size
 
     def visualize_com(self):
         # debug viz
@@ -175,8 +180,7 @@ class HumanoidTest(Humanoid):
             self._dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
             self._dof_obs_size = 72     #! 6 (joint_obs_size) * 12 (num_joints)
             self._num_actions = 28      #! num_dof
-                            #! root_h + num_body * (pos, rot, vel, ang_vel) - root_pos
-            self._num_obs = (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
+            self._num_obs = (48) + (28) + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
     
             self.num_ref_obs = (12 * 4) + 28 + (4 * 3)
 
@@ -195,11 +199,9 @@ class HumanoidTest(Humanoid):
 
         if self.cfg["env"]["asset"]["useCoM"]:
             self.num_ref_obs += 3
-            self.useCoM = True
 
         if self.cfg["env"]["asset"]["useRootRot"]:
             self.num_ref_obs += 4
-            # self.useRootRot = True
         return
     
     def _compute_ref_observations(self, env_ids=None):
@@ -272,27 +274,15 @@ class HumanoidTest(Humanoid):
 
     def _compute_observations(self, env_ids=None):
         obs = self._compute_humanoid_obs(env_ids)
-        joint_body_obs = [76, 271]
 
         if (env_ids is None):
-            self._dof_buf[:] = obs[:, :joint_body_obs[0]]
-            self.obs_buf[:] = obs[:, joint_body_obs[0]:joint_body_obs[1]]
-            if self.useCoM:
-                self._com_pos[:] = obs[:, 271:274]
-            if self.useRootRot:
-                self._root_grot[:] = obs[:, 274:278]
-
+            self.obs_buf[:] = obs
             self._key_body_pos = self._rigid_body_pos[:, self._key_body_ids]
-        else:
-            self._dof_buf[env_ids] = obs[:, :joint_body_obs[0]]
-            self.obs_buf[env_ids] = obs[:, joint_body_obs[0]:joint_body_obs[1]]
-            if self.useCoM:
-                self._com_pos[env_ids] = obs[:, 271:274]
-            if self.useRootRot:
-                self._root_grot[env_ids] = obs[:, 274:278]
 
+        else:
+            self.obs_buf[env_ids] = obs
             self._key_body_pos[env_ids] = self._rigid_body_pos[env_ids.unsqueeze(-1), self._key_body_ids.unsqueeze(0)]
-        return
+        return 
         
     def _compute_humanoid_obs(self, env_ids=None):
         if (env_ids is None):
@@ -348,12 +338,12 @@ class HumanoidTest(Humanoid):
         return ref_obs
 
     def _compute_reward(self, actions):
-        obs = self._dof_buf              # shape: [num_envs, 76]
+        obs = self.obs_buf              # shape: [num_envs, 76]
         ref_obs = self.ref_buf           # shape: [num_envs, 88 or 91]
         key_pos = self._key_body_pos
         _print = True if(self.sim_forward or self.sim_forward_continuous) else False
         _step = self.progress_buf[0]
-        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, key_pos, self._com_pos, self.useCoM, self._root_grot, self.useRootRot, len(self._dof_offsets)-1, _print, _step)
+        self.rew_buf[:] = compute_deepmm_reward(obs, ref_obs, key_pos, self.useCoM, self.useRootRot, len(self._dof_offsets)-1, _print, _step)
         return
 
     def _compute_com(self, body_states, body_masses):
@@ -439,8 +429,8 @@ def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, do
 
 
 @torch.jit.script
-def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, root_rot, useRootRot, num_joints, _print, _step):
-    # type: (Tensor, Tensor, Tensor, Tensor, bool, Tensor, bool, int, bool, int) -> Tensor
+def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num_joints, _print, _step):
+    # type: (Tensor, Tensor, Tensor, bool, bool, int, bool, int) -> Tensor
     num_envs = obs_buf.shape[0]
     num_key_body = 4
     pose_w = 0.6
@@ -499,7 +489,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, root_r
     #### 4. get com difference
     if useCoM:
         # get simulated character's com_pos
-        sim_com_pos = com_pos
+        sim_com_pos = obs_buf[:, 271:271 + 3]
 
         # get reference character's com_pos
         ref_com_pos = ref_buf[:, 88:91]
@@ -514,7 +504,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, com_pos, useCoM, root_r
     #### 5. get rootRot difference
     if useRootRot:
         ref_root_grot = ref_buf[:, 91:95]
-        sim_root_grot = root_rot
+        sim_root_grot = obs_buf[:, 274:274 + 4]
         inv_sim_root_grot = quat_inverse(sim_root_grot)
         diff_root_grot = quat_mul_norm(ref_root_grot, inv_sim_root_grot)
         diff_angle_root_grot, _ = quat_angle_axis(diff_root_grot)
