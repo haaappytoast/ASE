@@ -23,7 +23,7 @@ env:
     assetRoot: "ase/data/assets"
     assetFileName: "mjcf/amp_humanoid.xml"
     useCoM: True
-    useRrot: True
+    useRootRot: True
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0
