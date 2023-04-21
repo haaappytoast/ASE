@@ -132,7 +132,7 @@ class HumanoidTest(Humanoid):
             sphere_geom = gymutil.WireframeSphereGeometry(0.1, 16, 16, None, color=(1, 0, 0))
             
             for i in range(self.num_envs):
-                base_pos = (self._com_pos[i, :]).cpu().numpy()
+                base_pos = (self.obs_buf[i, 271:274]).cpu().numpy()
                 x = base_pos[0]
                 y = base_pos[1]
                 z = base_pos[2]
@@ -524,10 +524,10 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
         print("flat_rot_diff_angle: ", flat_rot_diff_angle[0])
         print("sum_rot_diff_angle: ", sum_rot_diff_angle[0].item())
 
-        print("pose_reward: ", pose_reward.item(), " | ", (pose_w * pose_reward).item())
-        print("vel_reward: ", vel_reward.item(), " | ", (vel_w * vel_reward).item())
-        print("ee_reward: ", ee_reward.item(), " | ", (ee_w * ee_reward).item())
-        print("com_reward: ", com_reward.item(), " | ", (com_w * com_reward).item())
-        print("groot_rot_reward: ", groot_rot_reward.item(), " | ", (rootrot_w * groot_rot_reward).item())
-        print("total_reward: ", reward.item())
+        print("pose_reward: ", pose_reward[0].item(), " | ", (pose_w * pose_reward)[0].item())
+        print("vel_reward: ", vel_reward[0].item(), " | ", (vel_w * vel_reward)[0].item())
+        print("ee_reward: ", ee_reward[0].item(), " | ", (ee_w * ee_reward)[0].item())
+        print("com_reward: ", com_reward[0].item(), " | ", (com_w * com_reward)[0].item())
+        print("groot_rot_reward: ", groot_rot_reward[0].item(), " | ", (rootrot_w * groot_rot_reward)[0].item())
+        print("total_reward: ", reward[0].item())
     return reward
