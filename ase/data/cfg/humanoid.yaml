@@ -24,6 +24,7 @@ env:
     assetFileName: "mjcf/amp_humanoid.xml"
     useCoM: True
     useRootRot: True
+    usePhase: True
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0
