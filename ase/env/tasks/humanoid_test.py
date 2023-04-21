@@ -132,7 +132,7 @@ class HumanoidTest(Humanoid):
             sphere_geom = gymutil.WireframeSphereGeometry(0.1, 16, 16, None, color=(1, 0, 0))
             
             for i in range(self.num_envs):
-                base_pos = (self._com_pos[i, :]).cpu().numpy()
+                base_pos = (self.obs_buf[i, 271:274]).cpu().numpy()
                 x = base_pos[0]
                 y = base_pos[1]
                 z = base_pos[2]
