@@ -59,6 +59,7 @@ class HumanoidDeepmimic(Humanoid):
 
         self.useCoM = cfg["env"]["asset"]["useCoM"]
         self.useRootRot =cfg["env"]["asset"]["useRootRot"]
+        self.usePhase = cfg["env"]["asset"]["usePhase"]
 
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
@@ -207,6 +208,9 @@ class HumanoidDeepmimic(Humanoid):
         
         if (self.useRootRot):
             obs_size += 4
+            
+        if (self.usePhase):
+            obs_size += 1
 
         return obs_size
         
@@ -359,6 +363,7 @@ class HumanoidDeepmimic(Humanoid):
             body_ang_vel = self._rigid_body_ang_vel
             dof_pos = self._dof_pos
             dof_vel = self._dof_vel
+            motion_phase = self._motion_lib._calc_phase(self._motion_ids, self._motion_times).reshape(-1, 1)
         else:
             body_pos = self._rigid_body_pos[env_ids]            # [num_envs, 15, 3]
             body_rot = self._rigid_body_rot[env_ids]            # [num_envs, 15, 4]
@@ -366,9 +371,10 @@ class HumanoidDeepmimic(Humanoid):
             body_ang_vel = self._rigid_body_ang_vel[env_ids]    # [num_envs, 15, 3]
             dof_pos = self._dof_pos[env_ids]                    # [num_envs, num_dof]
             dof_vel = self._dof_vel[env_ids]                    # [num_envs, num_dof]
-
+            motion_phase = self._motion_lib._calc_phase(self._motion_ids[env_ids], self._motion_times[env_ids]).reshape(-1, 1)
+            
         obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, self.useCoM, self.body_mass, self.useRootRot)
-        
+        obs = concat_tensor(obs, motion_phase)
         return obs
 
     # 여기서 motion_times랑 motion_ids reset된 걸로 해야되는 건가? -> 확인해보기
