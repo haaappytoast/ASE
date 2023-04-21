@@ -38,6 +38,7 @@ from isaacgym import gymutil
 import env.tasks.humanoid as humanoid
 import env.tasks.humanoid_test as humanoid_test
 import env.tasks.humanoid_test_task as humanoid_test_task
+from env.tasks.humanoid_test import compute_deepmm_reward
 
 from utils import gym_util
 from utils.motion_lib import DeepMimicMotionLib
@@ -50,7 +51,7 @@ from poselib.poselib.core import *
 TAR_ACTOR_ID = 1
 TAR_FACING_ACTOR_ID = 2
 
-class HumanoidTestHeading(humanoid_test_task.HumanoidTestTask):
+class HumanoidHeading(humanoid_test_task.HumanoidTestTask):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         self._tar_speed_min = cfg["env"]["tarSpeedMin"]
         self._tar_speed_max = cfg["env"]["tarSpeedMax"]
@@ -81,6 +82,8 @@ class HumanoidTestHeading(humanoid_test_task.HumanoidTestTask):
 
     def _build_marker_state_tensors(self):
         num_actors = self._root_states.shape[0] // self.num_envs    # [self.num_envs * num_actors, (pos3, rot4, lin vel3, ang vel3)]
+        print("inside build_marker_state: ", self._root_states.view(self.num_envs, num_actors, self._root_states.shape[-1])[..., TAR_ACTOR_ID, :])
+        exit()
         self._marker_states = self._root_states.view(self.num_envs, num_actors, self._root_states.shape[-1])[..., TAR_ACTOR_ID, :]
         self._marker_pos = self._marker_states[..., :3]
         self._marker_rot = self._marker_states[..., 3:7]
@@ -141,11 +144,24 @@ class HumanoidTestHeading(humanoid_test_task.HumanoidTestTask):
         return obs
 
     def _compute_reward(self, actions):
+        # 1. imitation reward
+        obs = self.obs_buf              # shape: [num_envs, 76]
+        ref_obs = self.ref_buf           # shape: [num_envs, 88 or 91]
+        key_pos = self._key_body_pos
+        _print = True if(self.sim_forward or self.sim_forward_continuous) else False
+        _step = self.progress_buf[0]
+        imit_reward = compute_deepmm_reward(obs, ref_obs, key_pos, self.useCoM, self.useRootRot, len(self._dof_offsets)-1, _print, _step)
+
+        # 2. heading task reward
         root_pos = self._humanoid_root_states[..., 0:3]
         root_rot = self._humanoid_root_states[..., 3:7]
-        self.rew_buf[:] = compute_heading_reward(root_pos, self._prev_root_pos,  root_rot,
+
+        task_reward = compute_heading_reward(root_pos, self._prev_root_pos, root_rot,
                                                  self._tar_dir, self._tar_speed,
                                                  self._tar_facing_dir, self.dt)
+        
+        self.rew_buf[:] = imit_reward + task_reward
+        
         return
 
     def _draw_task(self):
@@ -200,8 +216,8 @@ def compute_heading_observations(root_states, tar_dir, tar_speed, tar_face_dir):
     return obs
 
 @torch.jit.script
-def compute_heading_reward(root_pos, prev_root_pos, root_rot, tar_dir, tar_speed, tar_face_dir, dt):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, float) -> Tensor
+def compute_heading_reward(root_pos, prev_root_pos, root_rot, tar_dir, tar_speed, tar_face_dir, dt, _print, _step):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, float, bool, int) -> Tensor
     vel_err_scale = 0.25
     tangent_err_w = 0.1
 
@@ -234,4 +250,9 @@ def compute_heading_reward(root_pos, prev_root_pos, root_rot, tar_dir, tar_speed
 
     reward = dir_reward_w * dir_reward + facing_reward_w * facing_reward
 
-    return 
+    if (_print):
+        print("facing_reward: ", facing_reward[0].item(), " | ", (facing_reward_w * facing_reward)[0].item())
+        print("dir_reward: ", dir_reward[0].item(), " | ", (dir_reward_w * dir_reward)[0].item())
+        print("control total_reward: ", reward[0].item())
+
+    return reward

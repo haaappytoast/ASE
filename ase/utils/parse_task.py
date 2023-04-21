@@ -28,6 +28,7 @@
 
 #!! should be always changed
 from env.tasks.humanoid_test import HumanoidTest
+from env.tasks.humanoid_test_heading import HumanoidHeading
 from env.tasks.humanoid_view import HumanoidDeepmimic
 
 from env.tasks.humanoid import Humanoid

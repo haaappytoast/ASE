@@ -529,5 +529,5 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
         print("ee_reward: ", ee_reward[0].item(), " | ", (ee_w * ee_reward)[0].item())
         print("com_reward: ", com_reward[0].item(), " | ", (com_w * com_reward)[0].item())
         print("groot_rot_reward: ", groot_rot_reward[0].item(), " | ", (rootrot_w * groot_rot_reward)[0].item())
-        print("total_reward: ", reward[0].item())
+        print("imitation total_reward: ", reward[0].item())
     return reward
