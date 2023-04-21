@@ -28,7 +28,9 @@ env:
 
   asset:
     assetRoot: "ase/data/assets"
-    assetFileName: "mjcf/amp_humanoid_sword_shield.xml"
+    assetFileName: "mjcf/amp_humanoid.xml"
+    useCoM: True
+    useRootRot: True
 
   plane:
     staticFriction: 1.0
