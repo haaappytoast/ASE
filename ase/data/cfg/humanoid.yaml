@@ -1,6 +1,6 @@
 # if given, will override the device setting in gym. 
 env: 
-  numEnvs: 1
+  numEnvs: 1024
   envSpacing: 2
   episodeLength: 300
   isFlagrun: False
@@ -24,6 +24,7 @@ env:
     assetFileName: "mjcf/amp_humanoid.xml"
     useCoM: True
     useRootRot: True
+    usePhase: True
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0
