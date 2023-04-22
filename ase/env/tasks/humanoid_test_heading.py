@@ -79,11 +79,66 @@ class HumanoidHeading(humanoid_test_task.HumanoidTestTask):
             self._build_marker_state_tensors()
 
         return  
+    
+    def get_task_obs_size(self):
+        obs_size = 0
+        if (self._enable_task_obs):
+            obs_size = 5
+        return obs_size
+    
+    def _create_envs(self, num_envs, spacing, num_per_row):
+        if (not self.headless):
+            self._marker_handles = []
+            self._face_marker_handles = []
+            self._load_marker_asset()
 
+        super()._create_envs(num_envs, spacing, num_per_row)
+        return
+    
+    def _load_marker_asset(self):
+        asset_root = "ase/data/assets/mjcf/"
+        asset_file = "heading_marker.urdf"
+
+        asset_options = gymapi.AssetOptions()
+        asset_options.angular_damping = 0.01
+        asset_options.linear_damping = 0.01
+        asset_options.max_angular_velocity = 100.0
+        asset_options.density = 1.0
+        asset_options.fix_base_link = True
+        asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
+
+        self._marker_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
+
+        return
+    
+    def _build_env(self, env_id, env_ptr, humanoid_asset):
+        super()._build_env(env_id, env_ptr, humanoid_asset)
+        
+        if (not self.headless):
+            self._build_marker(env_id, env_ptr)
+        return
+
+    def _build_marker(self, env_id, env_ptr):
+        col_group = env_id
+        col_filter = 2
+        segmentation_id = 0
+
+        default_pose = gymapi.Transform()
+        default_pose.p.x = 1.0
+        default_pose.p.z = 0.0
+        
+        marker_handle = self.gym.create_actor(env_ptr, self._marker_asset, default_pose, "marker", col_group, col_filter, segmentation_id)
+        self.gym.set_rigid_body_color(env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.8, 0.0, 0.0))
+        self._marker_handles.append(marker_handle)
+        
+        face_marker_handle = self.gym.create_actor(env_ptr, self._marker_asset, default_pose, "face_marker", col_group, col_filter, segmentation_id)
+        self.gym.set_rigid_body_color(env_ptr, face_marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.0, 0.0, 0.8))
+        self._face_marker_handles.append(face_marker_handle)
+        
+        return    
+    
     def _build_marker_state_tensors(self):
         num_actors = self._root_states.shape[0] // self.num_envs    # [self.num_envs * num_actors, (pos3, rot4, lin vel3, ang vel3)]
-        print("inside build_marker_state: ", self._root_states.view(self.num_envs, num_actors, self._root_states.shape[-1])[..., TAR_ACTOR_ID, :])
-        exit()
         self._marker_states = self._root_states.view(self.num_envs, num_actors, self._root_states.shape[-1])[..., TAR_ACTOR_ID, :]
         self._marker_pos = self._marker_states[..., :3]
         self._marker_rot = self._marker_states[..., 3:7]
@@ -148,7 +203,7 @@ class HumanoidHeading(humanoid_test_task.HumanoidTestTask):
         obs = self.obs_buf              # shape: [num_envs, 76]
         ref_obs = self.ref_buf           # shape: [num_envs, 88 or 91]
         key_pos = self._key_body_pos
-        _print = True if(self.sim_forward or self.sim_forward_continuous) else False
+        _print = True if (self.sim_forward or self.sim_forward_continuous) else False
         _step = self.progress_buf[0]
         imit_reward = compute_deepmm_reward(obs, ref_obs, key_pos, self.useCoM, self.useRootRot, len(self._dof_offsets)-1, _print, _step)
 
@@ -158,12 +213,42 @@ class HumanoidHeading(humanoid_test_task.HumanoidTestTask):
 
         task_reward = compute_heading_reward(root_pos, self._prev_root_pos, root_rot,
                                                  self._tar_dir, self._tar_speed,
-                                                 self._tar_facing_dir, self.dt)
+                                                 self._tar_facing_dir, self.dt, _print)
         
         self.rew_buf[:] = imit_reward + task_reward
         
         return
 
+    def pre_physics_step(self, actions):
+        super().pre_physics_step(actions)
+        self._prev_root_pos[:] = self._humanoid_root_states[..., 0:3]
+        return
+    
+    def _update_marker(self):
+        humanoid_root_pos = self._humanoid_root_states[..., 0:3]
+        self._marker_pos[..., 0:2] = humanoid_root_pos[..., 0:2] + self._tar_dir
+        self._marker_pos[..., 2] = 0.0
+
+        heading_theta = torch.atan2(self._tar_dir[..., 1], self._tar_dir[..., 0])
+        heading_axis = torch.zeros_like(self._marker_pos)
+        heading_axis[..., -1] = 1.0
+        heading_q = quat_from_angle_axis(heading_theta, heading_axis)
+        self._marker_rot[:] = heading_q
+
+        self._face_marker_pos[..., 0:2] = humanoid_root_pos[..., 0:2] + self._tar_facing_dir
+        self._face_marker_pos[..., 2] = 0.0
+
+        face_theta = torch.atan2(self._tar_facing_dir[..., 1], self._tar_facing_dir[..., 0])
+        face_axis = torch.zeros_like(self._marker_pos)
+        face_axis[..., -1] = 1.0
+        face_q = quat_from_angle_axis(face_theta, heading_axis)
+        self._face_marker_rot[:] = face_q
+
+        marker_ids = torch.cat([self._marker_actor_ids, self._face_marker_actor_ids], dim=0)
+        self.gym.set_actor_root_state_tensor_indexed(self.sim, gymtorch.unwrap_tensor(self._root_states),
+                                                     gymtorch.unwrap_tensor(marker_ids), len(marker_ids))
+        return
+    
     def _draw_task(self):
         self._update_marker()
 
@@ -216,8 +301,8 @@ def compute_heading_observations(root_states, tar_dir, tar_speed, tar_face_dir):
     return obs
 
 @torch.jit.script
-def compute_heading_reward(root_pos, prev_root_pos, root_rot, tar_dir, tar_speed, tar_face_dir, dt, _print, _step):
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, float, bool, int) -> Tensor
+def compute_heading_reward(root_pos, prev_root_pos, root_rot, tar_dir, tar_speed, tar_face_dir, dt, _print):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, float, bool) -> Tensor
     vel_err_scale = 0.25
     tangent_err_w = 0.1
 
