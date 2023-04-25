@@ -393,27 +393,19 @@ class DeepMimicMotionLib(MotionLib):
         self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
     
-    # def sample_time(self, motion_ids, max_episode_length, dt=None, train_epoch=None, is_train=True):
+    def sample_time_trunc(self, motion_ids, max_episode_length):
 
-    #     n = len(motion_ids)
-    #     phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
-    #     motion_len = self._motion_lengths[motion_ids]
-    #     motion_num_frames = self._motion_num_frames[motion_ids]
+        n = len(motion_ids)
+        phase = torch.rand(motion_ids.shape, device=self._device)   # shape: [num_samples]
+        motion_len = self._motion_lengths[motion_ids]
+        # motion_num_frames = self._motion_num_frames[motion_ids]
+        motion_fps = self._motion_fps[motion_ids]
 
-    #     # resampling motion_time for env which is over max_episode_length
-    #     boundary = (motion_num_frames - max_episode_length) * dt
-    #     motion_time = phase * motion_len    # shape: [num_samples]
-        
-    #     overred = boundary < motion_time
-    #     env_overred = torch.where(overred == True)
+        # resampling motion_time limited to max_episode_length
+        boundary_length = (1 / motion_fps) * max_episode_length
+        motion_time = phase * (motion_len - boundary_length)    # shape: [num_samples]
 
-    #     if ((env_overred[0]).shape[0] == 0):
-    #         pass
-    #     else:
-    #         new_motion_time = torch.mul(phase[env_overred], boundary[env_overred])
-    #         motion_time[env_overred] = new_motion_time
-
-    #     return motion_time
+        return motion_time
 
     def _calc_phase(self, motion_ids, motion_times):
         motion_len = self._motion_lengths[motion_ids]       

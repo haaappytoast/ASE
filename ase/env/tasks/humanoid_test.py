@@ -233,8 +233,8 @@ class HumanoidTest(Humanoid):
         motion_ids = self._motion_lib.sample_motions(num_envs)
                 
         if (self._state_init == HumanoidTest.StateInit.Random):
-            # motion_times = self._motion_lib.sample_time(motion_ids, self.cfg["env"]["episodeLength"], self.dt, train_epoch, self.is_train)
-            motion_times = self._motion_lib.sample_time(motion_ids)
+            # motion_times = self._motion_lib.sample_time(motion_ids)
+            motion_times = self._motion_lib.sample_time_trunc(motion_ids, self.cfg["env"]["episodeLength"])
         elif (self._state_init == HumanoidTest.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
