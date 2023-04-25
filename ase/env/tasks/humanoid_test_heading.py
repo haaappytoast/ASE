@@ -215,7 +215,7 @@ class HumanoidHeading(humanoid_test_task.HumanoidTestTask):
                                                  self._tar_dir, self._tar_speed,
                                                  self._tar_facing_dir, self.dt, _print)
         
-        self.rew_buf[:] = imit_reward + task_reward
+        self.rew_buf[:] = imit_reward + 0.6 * task_reward
         
         return
 
