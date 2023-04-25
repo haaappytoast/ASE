@@ -110,7 +110,6 @@ class HumanoidDeepmimic(Humanoid):
     
     def post_physics_step(self):
         self._motion_sync()
-        print("inside post_physics_step")
         self.progress_buf += 1
         self.ones = torch.ones(self._motion_times.shape).to(self.device)
         self._motion_times += self.ones * self.dt
@@ -292,7 +291,8 @@ class HumanoidDeepmimic(Humanoid):
         num_envs = env_ids.shape[0]
         motion_ids = self._motion_lib.sample_motions(num_envs)
         if (self._state_init == HumanoidDeepmimic.StateInit.Random):
-            motion_times = self._motion_lib.sample_time(motion_ids)
+            # motion_times = self._motion_lib.sample_time(motion_ids)
+            motion_times = self._motion_lib.sample_time_trunc(motion_ids, self.cfg["env"]["episodeLength"])
 
         elif (self._state_init == HumanoidDeepmimic.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
