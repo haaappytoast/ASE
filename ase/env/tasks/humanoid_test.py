@@ -60,6 +60,7 @@ class HumanoidTest(Humanoid):
         self.useCoM = cfg["env"]["asset"]["useCoM"]
         self.useRootRot =cfg["env"]["asset"]["useRootRot"]
         self.usePhase = cfg["env"]["asset"]["usePhase"]
+        self.useContactForce = cfg["env"]["asset"]["useContactForce"]
         
         super().__init__(cfg=cfg,
                          sim_params=sim_params,
@@ -125,6 +126,8 @@ class HumanoidTest(Humanoid):
         if (self.usePhase):
             obs_size += 1
 
+        if (self.useContactForce):
+            obs_size += 6
         return obs_size
 
     def visualize_com(self):
@@ -298,7 +301,7 @@ class HumanoidTest(Humanoid):
             dof_pos = self._dof_pos
             dof_vel = self._dof_vel
             motion_phase = self._motion_lib._calc_phase(self._motion_ids, self._motion_times).reshape(-1, 1)    # Phase variable
-            
+            contact_force = self._contact_forces[:, self._contact_body_ids, :]
         else:
             body_pos = self._rigid_body_pos[env_ids]            # [num_envs, 15, 3]
             body_rot = self._rigid_body_rot[env_ids]            # [num_envs, 15, 4]
@@ -307,12 +310,16 @@ class HumanoidTest(Humanoid):
             dof_pos = self._dof_pos[env_ids]                    # [num_envs, num_dof]
             dof_vel = self._dof_vel[env_ids]                    # [num_envs, num_dof]
             motion_phase = self._motion_lib._calc_phase(self._motion_ids[env_ids], self._motion_times[env_ids]).reshape(-1, 1)  # Phase variable
+            contact_force = self._contact_forces[env_ids][:, self._contact_body_ids, :]
 
         obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, self.useCoM, self.body_mass, self.useRootRot)
 
+        print("motion_phase.shape: ", motion_phase.shape)
         if self.usePhase:
             obs = concat_tensor(obs, motion_phase)
         
+        if self.useContactForce:
+            obs = concat_tensor(obs, contact_force.reshape(self.num_envs, -1))
         
         return obs
 
