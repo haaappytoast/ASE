@@ -496,6 +496,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     
     #### 1-1. local_dof rotation
     # get simulated character's local_body_rot_obs
+    num_joints = 9
     local_body_rot = obs_buf[:, 121:121 + 36]                                                   # [num_envs, body_num * 4]
     local_body = local_body_rot.reshape(num_envs * num_joints, -1)                              # [num_envs * body_num, 4]
 

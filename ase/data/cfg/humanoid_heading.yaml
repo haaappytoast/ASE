@@ -32,6 +32,8 @@ env:
     useCoM: True
     useRootRot: True
     usePhase: True
+    useContactForce: True
+
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0
