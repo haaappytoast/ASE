@@ -1,8 +1,8 @@
 # if given, will override the device setting in gym. 
 env: 
-  numEnvs: 1024
+  numEnvs: 4096
   envSpacing: 2
-  episodeLength: 300
+  episodeLength: 100
   isFlagrun: False
   enableDebugVis: False
   
@@ -25,7 +25,7 @@ env:
     useCoM: True
     useRootRot: True
     usePhase: True
-    useContactForce: False
+    useContactForce: True
   plane:
     staticFriction: 1.0
     dynamicFriction: 1.0
