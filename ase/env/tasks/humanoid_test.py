@@ -496,11 +496,11 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     
     #### 1-1. local_dof rotation
     # get simulated character's local_body_rot_obs
-    local_body_rot = obs_buf[:, 121:121 + 60]                                                   # [num_envs, 15 * 4]
-    local_body = local_body_rot.reshape(num_envs * num_joints, -1)                          # [num_envs * 15, 4]
+    local_body_rot = obs_buf[:, 121:121 + 36]                                                   # [num_envs, body_num * 4]
+    local_body = local_body_rot.reshape(num_envs * num_joints, -1)                              # [num_envs * body_num, 4]
 
     # get reference character's local_dof_pos
-    ref_local_body_rot = ref_buf[:, 88:88 + 60]                                                 # [num_envs, body_num * 4]
+    ref_local_body_rot = ref_buf[:, 88:88 + 36]                                                 # [num_envs, body_num * 4]
     ref_local_body_rot = ref_local_body_rot.reshape(num_envs * num_joints, -1)                  # [num_envs*body_num, 4]
     
     # get quaternion difference
@@ -517,10 +517,10 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     
     #### 2. local_dof velocity
     # get simulated character's dof_vel
-    local_dof_vel = obs_buf[:, 48:48 + 28]                                             # [num_envs, 28]
+    local_dof_vel = obs_buf[:, 48:48 + 14]                                             # [num_envs, 28]
         
     # get reference character's dof_vel
-    ref_local_dof_vel = ref_buf[:, 48:48 + 28]                                         # [num_envs, 28]
+    ref_local_dof_vel = ref_buf[:, 48:48 + 14]                                         # [num_envs, 28]
 
     # get angular velocity difference
     diff_dof_vel = torch.abs(local_dof_vel - ref_local_dof_vel)                        # [num_envs, 28]      
@@ -531,10 +531,11 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     #### 3. global end effector position
     # get simulated character's ee position
     global_ee_key_pos = sim_key_pos
-    flat_global_ee_key_pos = global_ee_key_pos.reshape(num_envs, -1)                   # [num_envs, 12]
+    flat_global_ee_key_pos = global_ee_key_pos.reshape(num_envs, -1)                   # [num_envs, 4 * 3]
+    flat_global_ee_key_pos = flat_global_ee_key_pos[:, :6]
 
     # get reference character's ee position
-    ref_global_ee_key_pos = ref_buf[:, 76:88]
+    ref_global_ee_key_pos = ref_buf[:, 76:82]
     diff_ee_pos = flat_global_ee_key_pos - ref_global_ee_key_pos
     sum_diff_ee_pos = torch.sum(diff_ee_pos**2, dim=-1)
 
