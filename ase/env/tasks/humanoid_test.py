@@ -314,7 +314,6 @@ class HumanoidTest(Humanoid):
 
         obs = compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, dof_pos, dof_vel, self.useCoM, self.body_mass, self.useRootRot)
 
-        print("motion_phase.shape: ", motion_phase.shape)
         if self.usePhase:
             obs = concat_tensor(obs, motion_phase)
         
