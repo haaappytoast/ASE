@@ -236,8 +236,8 @@ class HumanoidTest(Humanoid):
         motion_ids = self._motion_lib.sample_motions(num_envs)
                 
         if (self._state_init == HumanoidTest.StateInit.Random):
-            # motion_times = self._motion_lib.sample_time(motion_ids)
-            motion_times = self._motion_lib.sample_time_trunc(motion_ids, self.cfg["env"]["episodeLength"])
+            motion_times = self._motion_lib.sample_time(motion_ids)
+            # motion_times = self._motion_lib.sample_time_trunc(motion_ids, self.cfg["env"]["episodeLength"])
         elif (self._state_init == HumanoidTest.StateInit.Start):
             motion_times = torch.zeros(num_envs, device=self.device)
         else:
@@ -271,7 +271,7 @@ class HumanoidTest(Humanoid):
         if(self.is_train):
             self._humanoid_root_states[env_ids, 0:3] = root_pos
         else:
-            self._humanoid_root_states[env_ids, 0:3] = root_pos + torch.tensor([0, 0, 0.05]).to(device=self.device)        
+            self._humanoid_root_states[env_ids, 0:3] = root_pos       
         self._humanoid_root_states[env_ids, 3:7] = root_rot
         self._humanoid_root_states[env_ids, 7:10] = root_vel
         self._humanoid_root_states[env_ids, 10:13] = root_ang_vel
@@ -318,8 +318,9 @@ class HumanoidTest(Humanoid):
         if self.usePhase:
             obs = concat_tensor(obs, motion_phase)
         
+        env_size = self.num_envs if env_ids == None else len(env_ids)
         if self.useContactForce:
-            obs = concat_tensor(obs, contact_force.reshape(self.num_envs, -1))
+            obs = concat_tensor(obs, contact_force.reshape(env_size, -1))
         
         return obs
 
