@@ -497,11 +497,11 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     #### 1-1. local_dof rotation
     # get simulated character's local_body_rot_obs
     num_joints = 9
-    local_body_rot = obs_buf[:, 121:121 + 36]                                                   # [num_envs, body_num * 4]
+    local_body_rot = obs_buf[:, 121 + 8:121 + 8 + 36]                                                   # [num_envs, body_num * 4]
     local_body = local_body_rot.reshape(num_envs * num_joints, -1)                              # [num_envs * body_num, 4]
 
     # get reference character's local_dof_pos
-    ref_local_body_rot = ref_buf[:, 88:88 + 36]                                                 # [num_envs, body_num * 4]
+    ref_local_body_rot = ref_buf[:, 88 + 8 :88 + 8 + 36]                                                 # [num_envs, body_num * 4]
     ref_local_body_rot = ref_local_body_rot.reshape(num_envs * num_joints, -1)                  # [num_envs*body_num, 4]
     
     # get quaternion difference
@@ -518,10 +518,10 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     
     #### 2. local_dof velocity
     # get simulated character's dof_vel
-    local_dof_vel = obs_buf[:, 48:48 + 14]                                             # [num_envs, 28]
+    local_dof_vel = obs_buf[:, 48 + 3:48 + 3 + 14]                                             # [num_envs, 28]
         
     # get reference character's dof_vel
-    ref_local_dof_vel = ref_buf[:, 48:48 + 14]                                         # [num_envs, 28]
+    ref_local_dof_vel = ref_buf[:, 48 + 3:48 + 3 + 14]                                         # [num_envs, 28]
 
     # get angular velocity difference
     diff_dof_vel = torch.abs(local_dof_vel - ref_local_dof_vel)                        # [num_envs, 28]      
