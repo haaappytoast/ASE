@@ -19,8 +19,8 @@ env:
   terminationHeight: 0.15
   enableEarlyTermination: True
   
-  tarSpeedMin: 1.5
-  tarSpeedMax: 1.6
+  tarSpeedMin: 0.8
+  tarSpeedMax: 0.9
   headingChangeStepsMin: 100
   headingChangeStepsMax: 200
   enableRandHeading: True
