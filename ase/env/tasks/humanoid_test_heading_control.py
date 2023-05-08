@@ -82,11 +82,15 @@ class HumanoidHeadingControl(humanoid_test_heading.HumanoidHeading):
             self.gym.subscribe_viewer_keyboard_event(
                 self.viewer, gymapi.KEY_RIGHT, "facing_right")
             self.gym.subscribe_viewer_keyboard_event(
-                self.viewer, gymapi.KEY_R, "random_directions")
+                self.viewer, gymapi.KEY_Q, "left_control")
+            self.gym.subscribe_viewer_keyboard_event(
+                self.viewer, gymapi.KEY_E, "right_control")            
 
         # keyboard 관련 variables
         self.heading_inputs = torch.zeros(4, dtype=torch.bool)
         self.facing_inputs = torch.zeros(4, dtype=torch.bool)
+        self.left_control = False
+        self.right_control = False
         return  
     
     def render(self, sync_frame_time=False):
