@@ -2,7 +2,7 @@
 env: 
   numEnvs: 4096
   envSpacing: 5
-  episodeLength: 300
+  episodeLength: 200
   isFlagrun: False
   enableDebugVis: False
   
@@ -19,8 +19,8 @@ env:
   terminationHeight: 0.15
   enableEarlyTermination: True
   
-  tarSpeedMin: 0.8
-  tarSpeedMax: 0.9
+  tarSpeedMin: 0.7
+  tarSpeedMax: 0.8
   headingChangeStepsMin: 100
   headingChangeStepsMax: 200
   enableRandHeading: True
