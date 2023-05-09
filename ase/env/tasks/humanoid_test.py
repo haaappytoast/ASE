@@ -139,7 +139,7 @@ class HumanoidTest(Humanoid):
             sphere_geom = gymutil.WireframeSphereGeometry(0.1, 16, 16, None, color=(1, 0, 0))
             
             for i in range(self.num_envs):
-                base_pos = (self.obs_buf[i, 271:274]).cpu().numpy()
+                base_pos = (self.obs_buf[i, 325:328]).cpu().numpy()
                 x = base_pos[0]
                 y = base_pos[1]
                 z = base_pos[2]
@@ -187,9 +187,9 @@ class HumanoidTest(Humanoid):
             self._dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
             self._dof_obs_size = 72     #! 6 (joint_obs_size) * 12 (num_joints)
             self._num_actions = 28      #! num_dof
-            self._num_obs = (48) + (28) + (3 * 15) + (4 * 15) + (3 * 15) + (3 * 15)
+            self._num_obs = (72) + (28) + (3 * 15) + (6 * 15) + (3 * 15) + (3 * 15)
     
-            self.num_ref_obs = (12 * 4) + 28 + (4 * 3) + (15 * 4)
+            self.num_ref_obs = (12 * 6) + 28 + (4 * 3) + (15 * 6)
 
 
         elif (asset_file == "mjcf/amp_humanoid_sword_shield.xml"):
@@ -341,8 +341,11 @@ class HumanoidTest(Humanoid):
             body_rot = self._motion_lib._get_blended_global_rot(self._reset_ref_motion_ids, self._reset_ref_motion_times)
 
         # local_lrot = dof_to_local_rotation(local_dof_pos, (len(self._dof_offsets) - 1) * 4, dof_offsets=self._dof_offsets)
-        local_dof_pos = local_dof_pos[:, self._dof_body_ids]
-        flat_local_lrot = local_dof_pos.reshape(local_dof_pos.shape[0], len(self._dof_body_ids) * local_dof_pos.shape[2]) 
+        local_dof_pos = local_dof_pos[:, self._dof_body_ids]                                                                                    
+        local_lrot_quat = local_dof_pos.reshape(local_dof_pos.shape[0] * len(self._dof_body_ids), local_dof_pos.shape[2])                       # [num_envs * 4, 12]
+        local_lrot = torch_utils.quat_to_tan_norm(local_lrot_quat) # [num_envs * 12, 6]
+        flat_local_lrot = local_lrot.reshape(local_dof_pos.shape[0], -1) # [num_envs, 12 * 6]
+        
         flat_global_ee_pos = global_ee_pos.reshape(global_ee_pos.shape[0], global_ee_pos.shape[1] * global_ee_pos.shape[2])                     # [num_envs, 4  * 3]
         flat_global_root = global_root.reshape(global_root.shape[0], -1)                                                                        # [num_envs, 4 ]
 
@@ -357,10 +360,12 @@ class HumanoidTest(Humanoid):
         
         flat_body_rot = body_rot.reshape(body_rot.shape[0] * body_rot.shape[1], body_rot.shape[2])                  # shape: [15, 4]
         flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [num_envs * 15, 4]
-        local_body_rot = flat_local_body_rot.reshape(body_rot.shape[0], body_rot.shape[1] * body_rot.shape[2])      # [num_envs, 15 * 4]
+        flat_local_body_rot_obs = torch_utils.quat_to_tan_norm(flat_local_body_rot)                                 # shape: [num_envs * 15, 6]
+        local_body_rot = flat_local_body_rot_obs.reshape(body_rot.shape[0], body_rot.shape[1] * flat_local_body_rot_obs.shape[1]) # shape : [num_envs, 15*6]
 
 
-        # [num_envs, 88 + 60] =  (12 * 4)           + 28           + (4 * 3)         + (15 * 4)
+
+        # [num_envs, 112 + 90] =  (12 * 6)           + 28           + (4 * 3)         + (15 * 6)
         ref_obs = torch.cat((flat_local_lrot, local_dof_vel, flat_global_ee_pos, local_body_rot), dim=-1)
 
         # additional 정보
@@ -437,8 +442,9 @@ def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, do
 
     flat_body_rot = body_rot.reshape(body_rot.shape[0] * body_rot.shape[1], body_rot.shape[2])  # shape: [15, 4]
     flat_local_body_rot = quat_mul(flat_heading_rot, flat_body_rot) #! local(root coordinate)에서 바라본 body rot / shape: [num_envs * 15,4]
-    local_body_rot = flat_local_body_rot.reshape(body_rot.shape[0], body_rot.shape[1] * body_rot.shape[2])
-
+    flat_local_body_rot_obs = torch_utils.quat_to_tan_norm(flat_local_body_rot)
+    local_body_rot = flat_local_body_rot_obs.reshape(body_rot.shape[0], body_rot.shape[1] * flat_local_body_rot_obs.shape[1]) # shape : [num_envs, 15 * 6]
+    
     flat_body_vel = body_vel.reshape(body_vel.shape[0] * body_vel.shape[1], body_vel.shape[2])  # torch.Size([15, 3])
     flat_local_body_vel = quat_rotate(flat_heading_rot, flat_body_vel)                          #! local(root coordinate)에서 바라본 velocity torch.Size([15, 3])
     local_body_vel = flat_local_body_vel.reshape(body_vel.shape[0], body_vel.shape[1] * body_vel.shape[2])  # torch.Size([1, 15 * 3])
@@ -448,12 +454,15 @@ def compute_humanoid_observations(body_pos, body_rot, body_vel, body_ang_vel, do
     local_body_ang_vel = flat_local_body_ang_vel.reshape(body_ang_vel.shape[0], body_ang_vel.shape[1] * body_ang_vel.shape[2])   # torch.Size([1, 15 * 3])
     
     _dof_offsets = [0, 3, 6, 9, 10, 13, 14, 17, 18, 21, 24, 25, 28]
-    dof_lrot = dof_to_local_rotation(dof_pos, 48, _dof_offsets)    # [num_envs, 4 * 12]
+    local_rot_dof = dof_to_local_rotation(dof_pos, 48, _dof_offsets) # [num_envs, 12 * 4]
+    local_rot_dof_reshaped = local_rot_dof.reshape(-1, 4)    # [num_envs * 12, 4]
+    flat_local_rot_dof = torch_utils.quat_to_tan_norm(local_rot_dof_reshaped) # [num_envs * 12, 6]
+    dof_lrot = flat_local_rot_dof.reshape(local_rot_dof.shape[0], -1) # [num_envs, 12 * 6]
     
     cuda = torch.device('cuda')
     dof_lrot.to(cuda)
     
-    #                   (48)    + (28)       + (3 * 15)      + (4 * 15)      + (3 * 15)      + (3 * 15)
+    #                   (72)    + (28)       + (3 * 15)      + (6 * 15)      + (3 * 15)      + (3 * 15)
     obs = torch.cat((dof_lrot, dof_vel, local_body_pos, local_body_rot, local_body_vel, local_body_ang_vel), dim=-1)
 
     if useCoM:
@@ -499,17 +508,26 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     
     #### 1-1. local_dof rotation
     # get simulated character's local_body_rot_obs
-    local_body_rot = obs_buf[:, 121:121 + 60]                                                   # [num_envs, 15 * 4]
-    local_body = local_body_rot.reshape(num_envs * num_joints, -1)                          # [num_envs * 15, 4]
+    
+    ###################################################################################
+    ## !!!!! Why use num_joints? it calculates the body rotation difference 12 -> 15 ##
+    ###################################################################################
+    
+    local_body_rot = obs_buf[:, 145:145 + 90]                                                   # [num_envs, 15 * 6]
+    local_body = local_body_rot.reshape(num_envs * 15, -1)                          # [num_envs * 15, 6]
 
     # get reference character's local_dof_pos
-    ref_local_body_rot = ref_buf[:, 88:88 + 60]                                                 # [num_envs, body_num * 4]
-    ref_local_body_rot = ref_local_body_rot.reshape(num_envs * num_joints, -1)                  # [num_envs*body_num, 4]
+    ref_local_body_rot = ref_buf[:, 112:112 + 90]                                                 # [num_envs, body_num * 6]
+    ref_local_body_rot = ref_local_body_rot.reshape(num_envs * 15, -1)                  # [num_envs*body_num, 6]
     
+    # convert 6D to quaternion
+    local_body = torch_utils.tan_norm_to_quat(local_body).reshape(num_envs * 15, 4)
+    ref_local_body_rot = torch_utils.tan_norm_to_quat(ref_local_body_rot).reshape(num_envs * 15, 4)
+
     # get quaternion difference
     inv_local_body = quat_inverse(local_body)
     dof_diff = quat_mul_norm(ref_local_body_rot, inv_local_body)    
-
+    
     # get scalar rotation of a quaternion about its axis in radians 
     rot_diff_angle, rot_diff_axis = quat_angle_axis(dof_diff)                          # [num_envs * 12], [num_envs * 12, 3]
     flat_rot_diff_angle = rot_diff_angle.reshape(num_envs, -1)
@@ -520,10 +538,10 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     
     #### 2. local_dof velocity
     # get simulated character's dof_vel
-    local_dof_vel = obs_buf[:, 48:48 + 28]                                             # [num_envs, 28]
+    local_dof_vel = obs_buf[:, 72:72 + 28]                                             # [num_envs, 28]
         
     # get reference character's dof_vel
-    ref_local_dof_vel = ref_buf[:, 48:48 + 28]                                         # [num_envs, 28]
+    ref_local_dof_vel = ref_buf[:, 72:72 + 28]                                         # [num_envs, 28]
 
     # get angular velocity difference
     diff_dof_vel = torch.abs(local_dof_vel - ref_local_dof_vel)                        # [num_envs, 28]      
@@ -537,7 +555,7 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     flat_global_ee_key_pos = global_ee_key_pos.reshape(num_envs, -1)                   # [num_envs, 12]
 
     # get reference character's ee position
-    ref_global_ee_key_pos = ref_buf[:, 76:88]
+    ref_global_ee_key_pos = ref_buf[:, 100:112]
     diff_ee_pos = flat_global_ee_key_pos - ref_global_ee_key_pos
     sum_diff_ee_pos = torch.sum(diff_ee_pos**2, dim=-1)
 
@@ -546,10 +564,10 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
     #### 4. get com difference
     if useCoM:
         # get simulated character's com_pos
-        sim_com_pos = obs_buf[:, 271:271 + 3]
+        sim_com_pos = obs_buf[:, 325:325 + 3]
 
         # get reference character's com_pos
-        ref_com_pos = ref_buf[:, 148:151]
+        ref_com_pos = ref_buf[:, 202:202 + 3]
 
         # com_pos difference
         diff_com_pos = torch.abs(sim_com_pos - ref_com_pos)
@@ -560,8 +578,8 @@ def compute_deepmm_reward(obs_buf, ref_buf, sim_key_pos, useCoM, useRootRot, num
 
     #### 5. get rootRot difference
     if useRootRot:
-        ref_root_grot = ref_buf[:, 151:155]
-        sim_root_grot = obs_buf[:, 274:274 + 4]
+        ref_root_grot = ref_buf[:, 205:209]
+        sim_root_grot = obs_buf[:, 328:328 + 4]
         inv_sim_root_grot = quat_inverse(sim_root_grot)
         diff_root_grot = quat_mul_norm(ref_root_grot, inv_sim_root_grot)
         diff_angle_root_grot, _ = quat_angle_axis(diff_root_grot)

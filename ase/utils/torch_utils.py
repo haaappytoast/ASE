@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import torch
+import torch.nn.functional as F
 import numpy as np
 
 from isaacgym.torch_utils import *
@@ -85,6 +86,34 @@ def quat_to_tan_norm(q):
     
     norm_tan = torch.cat([tan, norm], dim=len(tan.shape) - 1)
     return norm_tan
+
+@torch.jit.script
+def tan_norm_to_rotmat(norm_tan):
+    # type: (Tensor) -> Tensor
+    tan = F.normalize(norm_tan[..., 0:3])
+    norm = F.normalize(norm_tan[..., 3:6])
+    binorm = F.normalize(torch.cross(norm_tan[..., 3:6], norm_tan[..., 0:3], dim= -1), dim=-1)
+    
+    rot_mat = torch.cat([tan, binorm, norm], dim = len(tan.shape)-1)
+    return rot_mat
+
+@torch.jit.script
+def rotmat_to_quat(rot_mat):
+    # type: (Tensor) -> Tensor
+    qw = torch.sqrt(torch.ones_like(rot_mat[...,0] + rot_mat[..., 0] + rot_mat[..., 4] + rot_mat[..., 8]))/2
+    qx = (rot_mat[..., 7] - rot_mat[..., 5])/(4 * qw)
+    qy = (rot_mat[..., 2] - rot_mat[..., 6])/(4 * qw)
+    qz = (rot_mat[..., 3] - rot_mat[..., 1])/(4 * qw)
+    
+    q = torch.cat([qx, qy, qz, qw], dim = len(qw.shape)-1)
+    return q
+
+@torch.jit.script
+def tan_norm_to_quat(norm_tan):
+    # type: (Tensor) -> Tensor
+    rot_mat = tan_norm_to_rotmat(norm_tan)
+    q = rotmat_to_quat(rot_mat)
+    return q
 
 @torch.jit.script
 def euler_xyz_to_exp_map(roll, pitch, yaw):
