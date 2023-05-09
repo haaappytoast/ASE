@@ -244,7 +244,7 @@ class HumanoidTest(Humanoid):
             assert(False), "Unsupported state initialization strategy: {:s}".format(str(self._state_init))
         
         # root_pos.shape:  torch.Size([1, 3], [1, 4], [1, 28], [1, 3], [1, 4, 3] )
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos, body_vel \
                 = self._motion_lib.get_motion_state(motion_ids, motion_times) 
 
         # reset humanoid state
@@ -254,7 +254,8 @@ class HumanoidTest(Humanoid):
                             dof_pos=dof_pos, 
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
-                            dof_vel=dof_vel)
+                            dof_vel=dof_vel,
+                            body_vel = body_vel)
 
         # for reference motion        
         self._reset_env_ids = env_ids
@@ -267,7 +268,7 @@ class HumanoidTest(Humanoid):
             self._motion_times[env_ids] = motion_times
         return
 
-    def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel):
+    def _set_env_state(self, env_ids, root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, body_vel):
         if(self.is_train):
             self._humanoid_root_states[env_ids, 0:3] = root_pos
         else:
@@ -277,7 +278,9 @@ class HumanoidTest(Humanoid):
         self._humanoid_root_states[env_ids, 10:13] = root_ang_vel
         
         self._dof_pos[env_ids] = dof_pos
-        self._dof_vel[env_ids] = dof_vel
+        self._dof_vel[env_ids] = dof_vel\
+        
+        self._rigid_body_vel = body_vel
         return
 
     def _compute_observations(self, env_ids=None):

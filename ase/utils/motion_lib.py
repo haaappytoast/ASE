@@ -181,7 +181,8 @@ class MotionLib():
 
         dof_vel = self.dvs[f0l]
 
-        vals = [root_pos0, root_pos1, local_rot0, local_rot1, root_vel, root_ang_vel, key_pos0, key_pos1]
+        body_vel = self.gvs[f0l]    #shape: [1, 15, 3]
+        vals = [root_pos0, root_pos1, local_rot0, local_rot1, root_vel, root_ang_vel, key_pos0, key_pos1, body_vel]
         for v in vals:
             assert v.dtype != torch.float64
 
@@ -199,7 +200,7 @@ class MotionLib():
         
         dof_pos = self._local_rotation_to_dof(local_rot)
 
-        return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos
+        return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos, body_vel
     
     def _load_motions(self, motion_file):
         self._motions = []
@@ -390,7 +391,7 @@ class DeepMimicMotionLib(MotionLib):
     def __init__(self, motion_file, dof_body_ids, dof_offsets, key_body_ids, device):
         super().__init__(motion_file, dof_body_ids, dof_offsets, key_body_ids, device)
         motions = self._motions
-        self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()
+        self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()   # [num_frames, 15, 3]
         self.gavs = torch.cat([m.global_angular_velocity for m in motions], dim=0).float()
     
     def sample_time_trunc(self, motion_ids, max_episode_length):
