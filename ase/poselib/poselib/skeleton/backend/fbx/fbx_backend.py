@@ -82,6 +82,7 @@ def fbx_to_npy(file_name_in, root_joint_name, fps):
     root_joint = None
     while len(possible_root_nodes) > 0:
         joint = possible_root_nodes.pop(0)
+        print(joint.GetName())
         if not search_root:
             if joint.GetName() == root_joint_name:
                 root_joint = joint
