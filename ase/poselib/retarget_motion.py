@@ -47,7 +47,7 @@ Data required for retargeting are stored in a retarget config dictionary as a js
   - scale: scale offset from source to target skeleton
 """
 
-VISUALIZE = False
+VISUALIZE = True
 
 def project_joints(motion):
     right_upper_arm_id = motion.skeleton_tree._node_indices["right_upper_arm"]
@@ -205,27 +205,56 @@ def project_joints(motion):
 
 def main():
     # load retarget config
+    retarget_data_path = "data/configs/retarget_sfu_to_amp.json"
     retarget_data_path = "data/configs/retarget_cmu_to_amp.json"
+    retarget_data_path = "data/configs/retarget_ybot_to_amp.json"
+    retarget_data_path = "data/configs/retarget_cmlAvatar_to_amp.json"
+    retarget_data_path = "data/configs/retarget_metaAvatar_to_cml.json"
+
+    changeSource = True
+    source_motion = 'data/unity/0919/jointInfo1.npy'
+    target_motion_path = 'data/retargeted/cml@jointInfo1.npy'
+    target_tpose = 'data/cml_humanoid_tpose.npy'
+
     with open(retarget_data_path) as f:
         retarget_data = json.load(f)
-
+        print(retarget_data.keys())
+        if changeSource:
+            retarget_data['source_motion'] = source_motion
+            retarget_data['target_tpose'] = target_tpose
+            retarget_data['target_motion_path'] = target_motion_path
+            retarget_data['trim_frame_beg'] = 0
+            retarget_data['trim_frame_end'] = 300
     # load and visualize t-pose files
     source_tpose = SkeletonState.from_file(retarget_data["source_tpose"])
     if VISUALIZE:
+        print("plot source_tpose")
         plot_skeleton_state(source_tpose)
 
     target_tpose = SkeletonState.from_file(retarget_data["target_tpose"])
     if VISUALIZE:
+        print("plot target_tpose")
         plot_skeleton_state(target_tpose)
 
     # load and visualize source motion sequence
     source_motion = SkeletonMotion.from_file(retarget_data["source_motion"])
     if VISUALIZE:
+        print("plot source_motion")
         plot_skeleton_motion_interactive(source_motion)
 
     # parse data from retarget config
     joint_mapping = retarget_data["joint_mapping"]
     rotation_to_target_skeleton = torch.tensor(retarget_data["rotation"])
+
+    #!! test code: run skeletonState retargeting
+    # target_motion = source_tpose.retarget_to_by_tpose(
+    #   joint_mapping=retarget_data["joint_mapping"],
+    #   source_tpose=source_tpose,
+    #   target_tpose=target_tpose,
+    #   rotation_to_target_skeleton=rotation_to_target_skeleton,
+    #   scale_to_target_skeleton=retarget_data["scale"]
+    # )
+    # exit()
 
     # run retargeting
     target_motion = source_motion.retarget_to_by_tpose(
@@ -269,7 +298,6 @@ def main():
     
     new_sk_state = SkeletonState.from_rotation_and_root_translation(target_motion.skeleton_tree, local_rotation, root_translation, is_local=True)
     target_motion = SkeletonMotion.from_skeleton_state(new_sk_state, fps=target_motion.fps)
-
     # save retargeted motion
     target_motion.to_file(retarget_data["target_motion_path"])
 

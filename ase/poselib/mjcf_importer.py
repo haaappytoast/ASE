@@ -40,10 +40,11 @@ from poselib.visualization.common import plot_skeleton_state
 # plot_skeleton_state(zero_pose)
 
 # load in XML mjcf file and save zero rotation pose in npy format
-xml_path = "/home/vml/deepmm_ws/ASE/ase/data/assets/mjcf/ybot.xml"
+# xml_path = "/home/vml/deepmm_ws/ASE/ase/data/assets/mjcf/ybot.xml"
+xml_path = "/home/vml/deepmm_ws/ASE/ase/data/assets/mjcf/cml_humanoid.xml"
 skeleton = SkeletonTree.from_mjcf(xml_path)
 zero_pose = SkeletonState.zero_pose(skeleton)
-zero_pose.to_file("data/ybot.npy")
+#zero_pose.to_file("data/cml_humanoid_tpose.npy")
 
 # visualize zero rotation pose
 plot_skeleton_state(zero_pose)

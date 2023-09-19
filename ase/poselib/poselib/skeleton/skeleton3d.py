@@ -38,6 +38,7 @@ from ..core import *
 from .backend.fbx.fbx_read_wrapper import fbx_to_array
 import scipy.ndimage.filters as filters
 
+TEMP_SAVE = False
 
 class SkeletonTree(Serializable):
     """
@@ -785,7 +786,7 @@ class SkeletonState(Serializable):
     def _remapped_to(
         self, joint_mapping: Dict[str, str], target_skeleton_tree: SkeletonTree
     ):
-        joint_mapping_inv = {target: source for source, target in joint_mapping.items()}
+        joint_mapping_inv = {target: source for source, target in joint_mapping.items()}    # [joints in amp]
         reduced_target_skeleton_tree = target_skeleton_tree.keep_nodes_by_names(
             list(joint_mapping_inv)
         )
@@ -902,9 +903,22 @@ class SkeletonState(Serializable):
         # TODO: combine the following steps before STEP 3
         source_tpose = source_tpose._transfer_to(new_skeleton_tree)
         source_state = self._transfer_to(new_skeleton_tree)
+        
+        from poselib.visualization.common import plot_skeleton_state
+
+        # temporary save
+        if TEMP_SAVE == True:
+            print("new source_tpose _transfer_to!!!")
+            print("source_tpose.rotation: ", source_tpose.rotation)
+            plot_skeleton_state(source_tpose)
 
         source_tpose = source_tpose._remapped_to(joint_mapping, target_skeleton_tree)
         source_state = source_state._remapped_to(joint_mapping, target_skeleton_tree)
+        # temporary save
+        if TEMP_SAVE == True:
+            print("new source_tpose _remapped_to!!!")
+            print("source_tpose.rotation: ", source_tpose.rotation)
+            plot_skeleton_state(source_tpose)
 
         # STEP 2: Rotate the source to align with the target
         new_local_rotation = source_tpose.local_rotation.clone()
@@ -917,7 +931,12 @@ class SkeletonState(Serializable):
             r=new_local_rotation,
             t=quat_rotate(rotation_to_target_skeleton, source_tpose.root_translation),
             is_local=True,
-        )
+        )  
+        # temporary save
+        if TEMP_SAVE == True:
+            print("new source_tpose root_translation rotated!!!")
+            plot_skeleton_state(source_tpose)
+
 
         new_local_rotation = source_state.local_rotation.clone()
         new_local_rotation[..., 0, :] = quat_mul_norm(
@@ -929,6 +948,10 @@ class SkeletonState(Serializable):
             t=quat_rotate(rotation_to_target_skeleton, source_state.root_translation),
             is_local=True,
         )
+        # temporary save
+        if TEMP_SAVE == True:
+            print("new source_tpose new_local_rotation rotated!!!")
+            plot_skeleton_state(source_tpose)
 
         # STEP 3: Normalize to match the target scale
         root_translation_diff = (
@@ -1008,9 +1031,9 @@ class SkeletonState(Serializable):
         :type scale_to_target_skeleton: float
         :rtype: SkeletonState
         """
-        assert (
-            len(source_tpose.shape) == 0 and len(target_tpose.shape) == 0
-        ), "the retargeting script currently doesn't support vectorized operations"
+        # assert (
+        #     len(source_tpose.shape) == 0 and len(target_tpose.shape) == 0
+        # ), "the retargeting script currently doesn't support vectorized operations"
         return self.retarget_to(
             joint_mapping,
             source_tpose.local_rotation,
@@ -1222,13 +1245,14 @@ class SkeletonMotion(SkeletonState):
         """
         joint_names, joint_parents, transforms, fps = fbx_to_array(
             fbx_file_path, root_joint, fps
-        )
+        )       # transfroms (frame #, num_joints, 4, 4) -> rotation matrix
         # swap the last two axis to match the convention
         local_transform = euclidean_to_transform(
             transformation_matrix=torch.from_numpy(
                 np.swapaxes(np.array(transforms), -1, -2),
             ).float()
         )
+
         local_rotation = transform_rotation(local_transform)
         root_translation = transform_translation(local_transform)[..., root_trans_index, :]
         joint_parents = torch.from_numpy(np.array(joint_parents)).int()

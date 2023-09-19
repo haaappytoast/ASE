@@ -52,42 +52,43 @@ from poselib.visualization.common import plot_skeleton_state, plot_skeleton_moti
 
 
 
-#### 2. fbx import -> ybot_fbx ####
-fbx_file = "data/ybot_walking.fbx"
-# import fbx file - make sure to provide a valid joint name for root_joint
-motion = SkeletonMotion.from_fbx(
-    fbx_file_path=fbx_file,
-    root_joint="mixamorig:Hips",
-    # fps=60
-    fps=30
-)
-motion.to_file("data/ybot_walking.npy")
-
-# visualize motion
-plot_skeleton_motion_interactive(motion)
-
-
-
-# #### 3. npy plotting ####
-
-# # import npy file
-# import numpy as np
-# path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
-# npy_file = "concat_humanoid_walk.npy"
-
-# # path = "/home/vml/deepmm_ws/isaac_ws/isaac_example/ASE/ase/data/motions/"
-# # npy_file = "amp_humanoid_walk.npy"
-
-# motion_dict = np.load(path + npy_file, allow_pickle=True).item()
-
-# npy_motion = SkeletonMotion.from_dict(
-#     dict_repr=motion_dict
+# #### 2. fbx import -> ybot_fbx ####
+# fbx_file = "data/personal/goalkeeper.fbx"
+# # import fbx file - make sure to provide a valid joint name for root_joint
+# motion = SkeletonMotion.from_fbx(
+#     fbx_file_path=fbx_file,
+#     root_joint="Hips",
+#     # fps=60
+#     fps=30
 # )
+# motion.to_file("data/personal/Armature@GoalkeeperCatch.npy")
 
+# # visualize motion
+# plot_skeleton_motion_interactive(motion)
+
+
+
+#### 3. npy plotting ####
+
+# import npy file
+import numpy as np
+path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
+npy_file = "cml@userMotion2.npy"
+npy_file = "unity/0919/jointInfo1.npy"
+npy_file = 'retargeted/cml@jointInfo1.npy'
+# path = "/home/vml/deepmm_ws/isaac_ws/isaac_example/ASE/ase/data/motions/"
+# npy_file = "amp_humanoid_walk.npy"
+
+motion_dict = np.load(path + npy_file, allow_pickle=True).item()
+
+# print(motion_dict['rotation']['arr'])
+npy_motion = SkeletonMotion.from_dict(
+    dict_repr=motion_dict
+)
 
 # # # save motion in npy format
 # # motion.to_file("data/ybot_walking.npy")
 
 # # visualize motion
 # # plot_skeleton_motion_interactive(motion)
-# plot_skeleton_motion_interactive(npy_motion)
+plot_skeleton_motion_interactive(npy_motion)
