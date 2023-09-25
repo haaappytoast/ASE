@@ -72,15 +72,19 @@ from poselib.visualization.common import plot_skeleton_state, plot_skeleton_moti
 
 # import npy file
 import numpy as np
-path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
+path = "/home/njh/Works/yerim/ASE/ase/poselib/data/"
 npy_file = "cml@userMotion2.npy"
-npy_file = "unity/0919/jointInfo1.npy"
-npy_file = 'retargeted/cml@jointInfo1.npy'
+npy_file = "unity/0913_dataset/MetaAvatar@m3_RLRL.npy"
+# npy_file = 'retargeted/cml@moion.npy'
 # path = "/home/vml/deepmm_ws/isaac_ws/isaac_example/ASE/ase/data/motions/"
 # npy_file = "amp_humanoid_walk.npy"
 
 motion_dict = np.load(path + npy_file, allow_pickle=True).item()
+##############################################
+################ my test code ################
+# print(motion_dict["rotation"])
 
+##############################################
 # print(motion_dict['rotation']['arr'])
 npy_motion = SkeletonMotion.from_dict(
     dict_repr=motion_dict

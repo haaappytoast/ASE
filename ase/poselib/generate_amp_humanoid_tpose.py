@@ -38,42 +38,42 @@ This scripts imports a MJCF XML file and converts the skeleton into a SkeletonTr
 It then generates a zero rotation pose, and adjusts the pose into a T-Pose.
 """
 
-# import MJCF file
-xml_path = "/home/vml/deepmm_ws/ASE/ase/data/assets/mjcf/cml_humanoid.xml"
-skeleton = SkeletonTree.from_mjcf(xml_path)
+# # import MJCF file
+# xml_path = "/home/vml/deepmm_ws/ASE/ase/data/assets/mjcf/cml_humanoid.xml"
+# skeleton = SkeletonTree.from_mjcf(xml_path)
 
-# generate zero rotation pose
-zero_pose = SkeletonState.zero_pose(skeleton)
+# # generate zero rotation pose
+# zero_pose = SkeletonState.zero_pose(skeleton)
 
-# adjust pose into a T Pose
-local_rotation = zero_pose.local_rotation
-local_rotation[skeleton.index("left_upper_arm")] = quat_mul(
-    quat_from_angle_axis(angle=torch.tensor([120.0]), axis=torch.tensor([1.0, 0.0, 0.0]), degree=True), 
-    local_rotation[skeleton.index("left_upper_arm")]
-)
-local_rotation[skeleton.index("right_upper_arm")] = quat_mul(
-    quat_from_angle_axis(angle=torch.tensor([-120.0]), axis=torch.tensor([1.0, 0.0, 0.0]), degree=True), 
-    local_rotation[skeleton.index("right_upper_arm")]
-)
+# # adjust pose into a T Pose
+# local_rotation = zero_pose.local_rotation
+# local_rotation[skeleton.index("left_upper_arm")] = quat_mul(
+#     quat_from_angle_axis(angle=torch.tensor([120.0]), axis=torch.tensor([1.0, 0.0, 0.0]), degree=True), 
+#     local_rotation[skeleton.index("left_upper_arm")]
+# )
+# local_rotation[skeleton.index("right_upper_arm")] = quat_mul(
+#     quat_from_angle_axis(angle=torch.tensor([-120.0]), axis=torch.tensor([1.0, 0.0, 0.0]), degree=True), 
+#     local_rotation[skeleton.index("right_upper_arm")]
+# )
 
-translation = zero_pose.root_translation
-translation += torch.tensor([0, 0, 0.9])
-translation = zero_pose.root_translation
-print("zero_pose.global_translation: ", zero_pose.global_translation)
+# translation = zero_pose.root_translation
+# translation += torch.tensor([0, 0, 0.9])
+# translation = zero_pose.root_translation
+# print("zero_pose.global_translation: ", zero_pose.global_translation)
 
-# save and visualize T-pose
-zero_pose.to_file("data/cml_humanoid_tpose110.npy")
-plot_skeleton_state(zero_pose)
+# # save and visualize T-pose
+# zero_pose.to_file("data/cml_humanoid_tpose110.npy")
+# plot_skeleton_state(zero_pose)
 
 
-# # cml npy file
-# path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
-# import numpy as np
-# npy_file = "cml_humanoid_tpose.npy"
-# t_pose = np.load(path + npy_file, allow_pickle=True).item()
-# skeletonState = SkeletonState.from_dict(t_pose) # skeletonState
-# skeletonTree = SkeletonTree.from_dict(t_pose["skeleton_tree"]) # skeletonState
-# print(t_pose)
+# cml npy file
+path = "/home/njh/Works/yerim/ASE/ase/poselib/data/"
+import numpy as np
+npy_file = "cml_humanoid_tpose.npy"
+t_pose = np.load(path + npy_file, allow_pickle=True).item()
+skeletonState = SkeletonState.from_dict(t_pose) # skeletonState
+skeletonTree = SkeletonTree.from_dict(t_pose["skeleton_tree"]) # skeletonState
+print(t_pose)
 
 # print("---before---\n", skeletonState.root_translation)
 
@@ -90,4 +90,4 @@ plot_skeleton_state(zero_pose)
 # # print("\n---after---\n", new_pose.root_translation)
 # # new_pose.to_file(path + "ybot_new_tpose.npy")
 
-# plot_skeleton_state(skeletonState)
+plot_skeleton_state(skeletonState)

@@ -212,7 +212,7 @@ def main():
     retarget_data_path = "data/configs/retarget_metaAvatar_to_cml.json"
 
     changeSource = True
-    source_motion = 'data/unity/0919/jointInfo1.npy'
+    source_motion = 'data/unity/0919/MetaAvatar@motion.npy'
     target_motion_path = 'data/retargeted/cml@jointInfo1.npy'
     target_tpose = 'data/cml_humanoid_tpose.npy'
 
@@ -223,8 +223,8 @@ def main():
             retarget_data['source_motion'] = source_motion
             retarget_data['target_tpose'] = target_tpose
             retarget_data['target_motion_path'] = target_motion_path
-            retarget_data['trim_frame_beg'] = 0
-            retarget_data['trim_frame_end'] = 300
+            retarget_data['trim_frame_beg'] = -1
+            retarget_data['trim_frame_end'] = -1
     # load and visualize t-pose files
     source_tpose = SkeletonState.from_file(retarget_data["source_tpose"])
     if VISUALIZE:
