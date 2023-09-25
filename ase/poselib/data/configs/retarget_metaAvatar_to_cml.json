@@ -1,7 +1,7 @@
 {
     "source_motion": "data/unity/MetaAvatar@motion1.npy",
     "target_motion_path": "data/retargeted/cml@motion1.npy",
-    "source_tpose": "data/personal/t_pose/MetaAvatar_tpose.npy",
+    "source_tpose": "data/personal/t_pose/MetaAvatar_rotated.npy",
     "target_tpose": "data/cml_tpose.npy",
     "joint_mapping": {
          "Hips": "pelvis",
@@ -20,7 +20,7 @@
          "Right_LowerArm": "right_lower_arm",
          "Right_Hand": "right_hand"
     },
-    "rotation": [0.5, 0.5, 0.5, 0.5],
+    "rotation": [0.0, 0.0, 0.0, 1.0],
     "scale": 0.01,
 	"root_height_offset": 0,
 	"trim_frame_beg": 10,
