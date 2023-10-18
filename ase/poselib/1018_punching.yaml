@@ -1,0 +1,48 @@
+motions:
+- source_motion: data/unity/1018/Combo Punch.npy
+  target_motion_path: data/retargeted/1018/Combo Punch.npy
+  fbx: Combo Punch.fbx
+
+- source_motion: data/unity/1018/Combo Punch (1).npy
+  target_motion_path: data/retargeted/1018/Combo Punch (1).npy
+  fbx: Combo Punch (1).fbx
+
+- source_motion: data/unity/1018/Combo Punch (2).npy
+  target_motion_path: data/retargeted/1018/Combo Punch (2).npy
+  fbx: Combo Punch (2).fbx
+
+- source_motion: data/unity/1018/Combo Punch (3).npy
+  target_motion_path: data/retargeted/1018/Combo Punch (3).npy
+  fbx: Combo Punch (3).fbx
+
+- source_motion: data/unity/1018/Combo Punch (4).npy
+  target_motion_path: data/retargeted/1018/Combo Punch (4).npy
+  fbx: Combo Punch (4).fbx
+
+- source_motion: data/unity/1018/Combo Punch (5).npy
+  target_motion_path: data/retargeted/1018/Combo Punch (5).npy
+  fbx: Combo Punch (5).fbx
+
+- source_motion: data/unity/1018/Punching Bag.npy
+  target_motion_path: data/retargeted/1018/Punching Bag.npy
+  fbx: Punching Bag.fbx
+
+- source_motion: data/unity/1018/Punching Bag (1).npy
+  target_motion_path: data/retargeted/1018/Punching Bag (1).npy
+  fbx: Punching Bag (1).fbx
+
+- source_motion: data/unity/1018/Punching Bag (2).npy
+  target_motion_path: data/retargeted/1018/Punching Bag (2).npy
+  fbx: Punching Bag (2).fbx
+
+- source_motion: data/unity/1018/Punching Bag (3).npy
+  target_motion_path: data/retargeted/1018/Punching Bag (3).npy
+  fbx: Punching Bag (3).fbx
+
+- source_motion: data/unity/1018/Punching Bag (4).npy
+  target_motion_path: data/retargeted/1018/Punching Bag (4).npy
+  fbx: Punching Bag (4).fbx
+
+- source_motion: data/unity/1018/Punching Bag (5).npy
+  target_motion_path: data/retargeted/1018/Punching Bag (5).npy
+  fbx: Punching Bag (5).fbx

@@ -221,6 +221,7 @@ def main():
     motion_path = "1017_user_blocking.yaml"
     motion_path = "1018_blocking.yaml"
     motion_path = "1018_outblock.yaml"
+    motion_path = "1018_punching.yaml"
 
 
     if multiple_sources:

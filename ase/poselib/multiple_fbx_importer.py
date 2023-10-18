@@ -8,8 +8,8 @@ import yaml
 #### fbx import -> ybot_fbx ####
 # fbx_file = "data/unity/ArmatureSkinningUpdateTpose.fbx"
 
-motion_path = "1018_outblock.yaml"
-fbx_path = "data/unity/motion_retarget/1018_outblock/"
+motion_path = "1018_punching.yaml"
+fbx_path = "data/fbx/1018/"
 VISUALIZE = False
 
 with open(motion_path) as f:
