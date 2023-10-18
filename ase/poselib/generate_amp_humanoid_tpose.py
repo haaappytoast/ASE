@@ -47,16 +47,16 @@ It then generates a zero rotation pose, and adjusts the pose into a T-Pose.
 
 # adjust pose into a T Pose
 
-local_rotation = skeletonState.local_rotation
+# local_rotation = skeletonState.local_rotation
 
-local_rotation[skeletonTree.index("Hips")] = quat_mul(
-    quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 0.0, 1.0]), degree=True), 
-    local_rotation[skeletonTree.index("Hips")]
-)
-local_rotation[skeletonTree.index("Hips")] = quat_mul(
-    quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 1.0, 0.0]), degree=True), 
-    local_rotation[skeletonTree.index("Hips")]
-)
+# local_rotation[skeletonTree.index("Hips")] = quat_mul(
+#     quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 0.0, 1.0]), degree=True), 
+#     local_rotation[skeletonTree.index("Hips")]
+# )
+# local_rotation[skeletonTree.index("Hips")] = quat_mul(
+#     quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 1.0, 0.0]), degree=True), 
+#     local_rotation[skeletonTree.index("Hips")]
+# )
 
 # translation = zero_pose.root_translation
 # translation += torch.tensor([0, 0, 0.9])
@@ -69,15 +69,15 @@ local_rotation[skeletonTree.index("Hips")] = quat_mul(
 
 
 # # cml npy file
-# path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
-# import numpy as np
-# npy_file = "cml_humanoid_tpose.npy"
-# t_pose = np.load(path + npy_file, allow_pickle=True).item()
-# skeletonState = SkeletonState.from_dict(t_pose) # skeletonState
-# skeletonTree = SkeletonTree.from_dict(t_pose["skeleton_tree"]) # skeletonState
-# print(t_pose)
+path = "/home/njh/Works/yerim/ASE/ase/poselib/data/"
+import numpy as np
+npy_file = "cml_humanoid_tpose.npy"
+t_pose = np.load(path + npy_file, allow_pickle=True).item()
+skeletonState = SkeletonState.from_dict(t_pose) # skeletonState
+skeletonTree = SkeletonTree.from_dict(t_pose["skeleton_tree"]) # skeletonState
+print(t_pose)
 
-# print("---before---\n", skeletonState.root_translation)
+print("---before---\n", skeletonState.root_translation)
 
 # # # translate root translation to new pose
 # # new_root_translation = torch.tensor([0, skeletonState.root_translation[1], 0])
@@ -92,4 +92,4 @@ local_rotation[skeletonTree.index("Hips")] = quat_mul(
 # # print("\n---after---\n", new_pose.root_translation)
 # # new_pose.to_file(path + "ybot_new_tpose.npy")
 
-# plot_skeleton_state(skeletonState)
+plot_skeleton_state(skeletonState)

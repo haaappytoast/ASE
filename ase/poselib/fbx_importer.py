@@ -75,6 +75,8 @@ import numpy as np
 path = "/home/njh/Works/yerim/ASE/ase/poselib/data/"
 npy_file = "cml@userMotion2.npy"
 npy_file = "unity/0913_dataset/MetaAvatar@m3_RLRL.npy"
+npy_file = "unity/0913_dataset/MetaAvatar@m3_RLRL.npy"
+npy_file = "01_01_cmu.npy"
 # npy_file = 'retargeted/cml@moion.npy'
 # path = "/home/vml/deepmm_ws/isaac_ws/isaac_example/ASE/ase/data/motions/"
 # npy_file = "amp_humanoid_walk.npy"

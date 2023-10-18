@@ -207,11 +207,11 @@ def main():
     # load retarget config
     retarget_data_path = "data/configs/retarget_sfu_to_amp.json"
     retarget_data_path = "data/configs/retarget_cmu_to_amp.json"
-    retarget_data_path = "data/configs/retarget_ybot_to_amp.json"
-    retarget_data_path = "data/configs/retarget_cmlAvatar_to_amp.json"
-    retarget_data_path = "data/configs/retarget_metaAvatar_to_cml.json"
+    # retarget_data_path = "data/configs/retarget_ybot_to_amp.json"
+    # retarget_data_path = "data/configs/retarget_cmlAvatar_to_amp.json"
+    # retarget_data_path = "data/configs/retarget_metaAvatar_to_cml.json"
 
-    changeSource = True
+    changeSource = False
     source_motion = 'data/unity/0919/MetaAvatar@motion.npy'
     target_motion_path = 'data/retargeted/cml@jointInfo1.npy'
     target_tpose = 'data/cml_humanoid_tpose.npy'
@@ -255,7 +255,7 @@ def main():
     #   scale_to_target_skeleton=retarget_data["scale"]
     # )
     # exit()
-
+    print("here")
     # run retargeting
     target_motion = source_motion.retarget_to_by_tpose(
       joint_mapping=retarget_data["joint_mapping"],

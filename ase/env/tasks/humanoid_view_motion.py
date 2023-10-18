@@ -28,7 +28,7 @@
 
 import torch
 
-from isaacgym import gymtorch
+from isaacgym import gymtorch, gymutil, gymapi
 
 from env.tasks.humanoid_amp import HumanoidAMP
 
@@ -64,18 +64,36 @@ class HumanoidViewMotion(HumanoidAMP):
 
     def post_physics_step(self):
         super().post_physics_step()
+        self.gym.clear_lines(self.viewer)
         self._motion_sync()
+        self.visualize_ref_positions()
         return
     
     def _get_humanoid_collision_filter(self):
         return 1 # disable self collisions
+    
+    def visualize_ref_positions(self):
+        motion_ids = self._motion_ids
+        motion_times = self.progress_buf * self._motion_dt
+        num_bodies = self._motion_lib._get_num_bodies()
+        body_poses = self._motion_lib.get_global_translation_state(motion_ids, motion_times)
+        body_poses -= body_poses[:,0,:].clone()
+        body_poses += self._rigid_body_pos[:,0,:]
+        
+        for i in range(len(self.envs)):
+            for j in range(num_bodies):
+                if j is 0:
+                    sphere_geom = gymutil.WireframeSphereGeometry(0.08, 16, 16, None, color=(1, 0, 0))       
+                else: sphere_geom = gymutil.WireframeSphereGeometry(0.04, 16, 16, None, color=(0, 0, 1))   
+                body_pose = gymapi.Transform(gymapi.Vec3(body_poses[i, j, 0], body_poses[i, j, 1], body_poses[i, j, 2]), r=None)
+                gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], body_pose)   
 
     def _motion_sync(self):
         num_motions = self._motion_lib.num_motions()
         motion_ids = self._motion_ids
         motion_times = self.progress_buf * self._motion_dt
 
-        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
+        root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos, _ \
            = self._motion_lib.get_motion_state(motion_ids, motion_times)
         
         root_vel = torch.zeros_like(root_vel)

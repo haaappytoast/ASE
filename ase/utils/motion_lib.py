@@ -106,6 +106,7 @@ class MotionLib():
         self.lrs = torch.cat([m.local_rotation for m in motions], dim=0).float()                    # body local rotation:          [motion file들의 num_frames, num_rigid_bodies, 4]
         self.grvs = torch.cat([m.global_root_velocity for m in motions], dim=0).float()             # global root velocity:         [motion file들의 num_frames * num_motion_file, 3]
         self.gravs = torch.cat([m.global_root_angular_velocity for m in motions], dim=0).float()    # global_root_angular_velocity: [motion file들의 num_frames * num_motion_file, 4]
+        self.gvs = torch.cat([m.global_velocity for m in motions], dim=0).float()   # [num_frames, 15, 3]
         #! from _compute_motion_dof_vels (local_angular_velocity from difference b/w local_rots)
         self.dvs = torch.cat([m.dof_vels for m in motions], dim=0).float()  # local dof joint velocity  # local_angular_velocity: [motion file들의 num_frames * num_motion_file, 28]
         lengths = self._motion_num_frames
@@ -148,7 +149,27 @@ class MotionLib():
 
     def get_motion_length(self, motion_ids):
         return self._motion_lengths[motion_ids]
+    
+    def get_global_translation_state(self, motion_ids, motion_times):
+        body_ids = [i for i in range(self._get_num_bodies())]
+        self._body_ids = torch.tensor(body_ids, device=self._device)
+        motion_len = self._motion_lengths[motion_ids]       
+        num_frames = self._motion_num_frames[motion_ids]    
+        dt = self._motion_dt[motion_ids]                    
 
+        frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
+
+        f0l = frame_idx0 + self.length_starts[motion_ids]
+        f1l = frame_idx1 + self.length_starts[motion_ids]
+        body_pos0 = self.gts[f0l.unsqueeze(-1), self._body_ids.unsqueeze(0)]
+        body_pos1 = self.gts[f1l.unsqueeze(-1), self._body_ids.unsqueeze(0)]
+        
+        blend = blend.unsqueeze(-1)
+        blend_exp = blend.unsqueeze(-1)
+        body_pos = (1.0 - blend_exp) * body_pos0 + blend_exp * body_pos1
+        
+        return body_pos
+        
     def get_motion_state(self, motion_ids, motion_times):
         n = len(motion_ids)
         num_bodies = self._get_num_bodies()
