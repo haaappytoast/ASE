@@ -107,7 +107,7 @@ def txt_to_motion(
 
 def main():
     path = 'data/unity/'
-    txt_name = '0919/jointInfo1.txt'
+    txt_name = 'motion_retarget/1018_user/user@jointInfo1.txt'
     motion = txt_to_motion(path, txt_name, save_np = False, np_name='CMLAvatar@TempMotion@Transmat')
 
     motion.to_file("data/unity/" + txt_name[:-4]+".npy")

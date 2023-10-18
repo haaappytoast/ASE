@@ -53,15 +53,23 @@ from poselib.visualization.common import plot_skeleton_state, plot_skeleton_moti
 
 
 # #### 2. fbx import -> ybot_fbx ####
-# fbx_file = "data/personal/goalkeeper.fbx"
+# # fbx_file = "data/unity/ArmatureSkinningUpdateTpose.fbx"
+
+# fbx_file = "data/unity/motion_retarget/"
+# motion_file = "ybot_vis@Pick Fruit_1.fbx"
+# motion_file = "ybot_vis@Pick Fruit_2.fbx"
+# motion_file = "ybot_vis@Pick Fruit_1_mirrored.fbx"
+# motion_file = "ybot_vis@Pick Fruit_2_mirrored.fbx"
+# motion_file = "ybot_vis@Picking Up Object.fbx"
 # # import fbx file - make sure to provide a valid joint name for root_joint
 # motion = SkeletonMotion.from_fbx(
-#     fbx_file_path=fbx_file,
-#     root_joint="Hips",
+#     fbx_file_path=fbx_file+motion_file,
+#     # root_joint="Hips",
+#     root_joint="mixamorig:Hips",
 #     # fps=60
 #     fps=30
 # )
-# motion.to_file("data/personal/Armature@GoalkeeperCatch.npy")
+# motion.to_file("data/unity/motion_retarget/" + motion_file[:-4] + ".npy")
 
 # # visualize motion
 # plot_skeleton_motion_interactive(motion)
@@ -75,7 +83,12 @@ import numpy as np
 path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
 npy_file = "cml@userMotion2.npy"
 npy_file = "unity/0919/jointInfo1.npy"
-npy_file = 'retargeted/cml@jointInfo1.npy'
+npy_file = 'retargeted/cml@m3_RLRL.npy'
+npy_file = 'retargeted/test/cml@1016pickfruits1.npy'
+npy_file = 'unity/0913_dataset/MetaAvatar@m3_RLRL.npy'
+# npy_file = 'retargeted/test/cml@1016pickfruits3.npy'
+# npy_file = 'unity/test/1016/metaAvatar@1016pickfruits2.npy'
+# npy_file = 'retargeted/test/1017_userblocking/cml@jointInfo0.npy'
 # path = "/home/vml/deepmm_ws/isaac_ws/isaac_example/ASE/ase/data/motions/"
 # npy_file = "amp_humanoid_walk.npy"
 

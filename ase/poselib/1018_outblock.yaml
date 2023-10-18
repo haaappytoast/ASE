@@ -1,0 +1,131 @@
+motions:
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (1).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (1).npy
+  fbx: ybot_vis@outblock (1).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (2).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (2).npy
+  fbx: ybot_vis@outblock (2).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (3).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (3).npy
+  fbx: ybot_vis@outblock (3).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (4).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (4).npy
+  fbx: ybot_vis@outblock (4).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (5).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (5).npy
+  fbx: ybot_vis@outblock (5).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (6).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (6).npy
+  fbx: ybot_vis@outblock (6).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (7).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (7).npy
+  fbx: ybot_vis@outblock (7).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (8).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (8).npy
+  fbx: ybot_vis@outblock (8).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (9).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (9).npy
+  fbx: ybot_vis@outblock (9).fbx
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (10).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (10).npy
+  fbx: ybot_vis@outblock (10).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (11).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (11).npy
+  fbx: ybot_vis@outblock (11).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (12).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (12).npy
+  fbx: ybot_vis@outblock (12).fbx
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (10).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (10).npy
+  fbx: ybot_vis@outblock (13).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (11).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (11).npy
+  fbx: ybot_vis@outblock (14).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (12).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (12).npy
+  fbx: ybot_vis@outblock (15).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (12).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (12).npy
+  fbx: ybot_vis@outblock (16).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock (12).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock (12).npy
+  fbx: ybot_vis@outblock (17).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (1).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (1).npy
+  fbx: ybot_vis@outblock_reverse (1).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (2).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (2).npy
+  fbx: ybot_vis@outblock_reverse (2).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (3).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (3).npy
+  fbx: ybot_vis@outblock_reverse (3).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (4).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (4).npy
+  fbx: ybot_vis@outblock_reverse (4).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (5).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (5).npy
+  fbx: ybot_vis@outblock_reverse (5).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (6).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (6).npy
+  fbx: ybot_vis@outblock_reverse (6).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (7).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (7).npy
+  fbx: ybot_vis@outblock_reverse (7).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (8).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (8).npy
+  fbx: ybot_vis@outblock_reverse (8).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (9).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (9).npy
+  fbx: ybot_vis@outblock_reverse (9).fbx
+
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (10).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (10).npy
+  fbx: ybot_vis@outblock_reverse (10).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (11).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (11).npy
+  fbx: ybot_vis@outblock_reverse (11).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (12).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (12).npy
+  fbx: ybot_vis@outblock_reverse (12).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (13).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (13).npy
+  fbx: ybot_vis@outblock_reverse (13).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (14).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (14).npy
+  fbx: ybot_vis@outblock_reverse (14).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (15).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (15).npy
+  fbx: ybot_vis@outblock_reverse (15).fbx
+
+- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@outblock_reverse (16).npy
+  target_motion_path: data/retargeted/1013_blocking/cml@outblock_reverse (16).npy
+  fbx: ybot_vis@outblock_reverse (16).fbx
