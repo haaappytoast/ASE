@@ -1,0 +1,28 @@
+{
+    "source_motion": "data/unity/motion_retarget/ybot_vis@Pick Fruit.npy",
+    "target_motion_path": "data/retargeted/cml@pick_fruit.npy",
+    "source_tpose": "data/unity/t_pose/ybot_vis_tpose.npy",
+    "target_tpose": "data/amp_humanoid_tpose.npy",
+    "joint_mapping": {
+         "mixamorig:Hips": "pelvis",
+         "mixamorig:LeftUpLeg": "left_thigh",
+         "mixamorig:LeftLeg": "left_shin",
+         "mixamorig:LeftFoot": "left_foot",
+         "mixamorig:RightUpLeg": "right_thigh",
+         "mixamorig:RightLeg": "right_shin",
+         "mixamorig:RightFoot": "right_foot",
+         "mixamorig:Spine": "torso",
+         "mixamorig:Head": "head",
+         "mixamorig:LeftArm": "left_upper_arm",
+         "mixamorig:LeftForeArm": "left_lower_arm",
+         "mixamorig:LeftHand": "left_hand",
+         "mixamorig:RightArm": "right_upper_arm",
+         "mixamorig:RightForeArm": "right_lower_arm",
+         "mixamorig:RightHand": "right_hand"
+    },
+    "rotation": [0.5, 0.5, 0.5, 0.5],
+    "scale": 0.01172,
+	"root_height_offset": 0.05,
+	"trim_frame_beg": -1,
+	"trim_frame_end": -1
+}

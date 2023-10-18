@@ -3,6 +3,10 @@
     "target_motion_path": "data/retargeted/cml@motion.npy",
     "source_tpose": "data/personal/t_pose/MetaAvatar_tpose.npy",
     "target_tpose": "data/cml_humanoid_tpose.npy",
+    "source_motion": "data/unity/MetaAvatar@motion1.npy",
+    "target_motion_path": "data/retargeted/cml@motion1.npy",
+    "source_tpose": "data/unity/t_pose/MetaAvatar_tpose.npy",
+    "target_tpose": "data/cml_tpose.npy",
     "joint_mapping": {
          "Hips": "pelvis",
          "Left_UpperLeg": "left_thigh",
