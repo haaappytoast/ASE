@@ -1,0 +1,49 @@
+motions:
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Blocking1.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking1.npy
+  fbx: ybot_vis@Blocking1.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Blocking1_mirrored.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking1_mirrored.npy
+  fbx: ybot_vis@Blocking1_mirrored.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Blocking2.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking2.npy
+  fbx: ybot_vis@Blocking2.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Blocking2_mirrored.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking2_mirrored.npy
+  fbx: ybot_vis@Blocking2_mirrored.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Body Block.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@BodyBlock.npy
+  fbx: ybot_vis@Body Block.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Body Block_mirrored.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@BodyBlock_mirrored.npy
+  fbx: ybot_vis@Body Block_mirrored.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Inward Block.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@InwardBlock.npy
+  fbx: ybot_vis@Inward Block.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Inward Block_mirrored.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@InwardBlock_mirrored.npy
+  fbx: ybot_vis@Inward Block_mirrored.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Outward Block.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@OutwardBlock.npy
+  fbx: ybot_vis@Outward Block.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Outward Block_mirrored.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@OutwardBlock_mirrored.npy
+  fbx: ybot_vis@Outward Block_mirrored.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Standing Block Idle.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@StandingBlockIdle.npy
+  fbx: ybot_vis@Standing Block Idle.fbx
+
+- source_motion: data/unity/motion_retarget/1013_blocking/ybot_vis@Standing Block Idle_mirrored.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@StandingBlockIdle_mirrored.npy
+  fbx: ybot_vis@Standing Block Idle_mirrored.fbx
+

@@ -44,7 +44,14 @@
             <geom name="right_lower_arm" type="capsule" fromto="0 0 -0.0525 0 0 -0.1875" size="0.04" density="1056"/>
 
             <body name="right_hand" pos="0 0 -0.258947">
+              <joint name="right_wrist_x" axis="1 0 0" range="-180 180" stiffness="200" damping="20" armature=".02"/>
+              <joint name="right_wrist_y" axis="0 1 0" range="-180 180" stiffness="200" damping="20" armature=".02"/>
+              <joint name="right_wrist_z" axis="0 0 1"  range="-180 180" stiffness="200" damping="20" armature=".02"/>
               <geom name="right_hand" type="sphere" size=".04" density="1865"/>
+              <geom name="racket_grip" type="box" pos="0.0755 0 0" size="0.1575 0.01575 0.01575" density="300"/>
+              <body name="racket" pos="0.3832 0 0">
+                <geom name="racket" type="box" pos="0 0 0" size="0.15 0.01575 0.1" density="50"/>
+              </body>
             </body>
           </body>
         </body>

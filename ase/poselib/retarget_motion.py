@@ -208,19 +208,22 @@ def main():
     # load retarget config
     retarget_data_path = "data/configs/retarget_sfu_to_amp.json"
     retarget_data_path = "data/configs/retarget_cmu_to_amp.json"
-    retarget_data_path = "data/configs/retarget_cmlAvatar_to_amp.json"
-    retarget_data_path = "data/configs/retarget_metaAvatar_to_cml.json"
-    retarget_data_path = "data/configs/retarget_ybot_to_amp.json"
+    #retarget_data_path = "data/configs/retarget_cmlAvatar_to_amp.json"
+    #retarget_data_path = "data/configs/retarget_ybot_to_amp.json"
+    #retarget_data_path = "data/configs/retarget_metaAvatar_to_cml.json"
+    retarget_data_path = "data/configs/retarget_red_to_cml.json"
 
     changeSource = True
     
     multiple_sources = True
     motion_path = "1012_pickfruits.yaml"
-    motion_path = "retarget_motion.yaml"
     motion_path = "1016_unityMeta.yaml"
     motion_path = "1017_user_blocking.yaml"
     motion_path = "1018_blocking.yaml"
-    motion_path = "1018_outblock.yaml"
+    motion_path = "retarget_motion.yaml"
+    motion_path = "1024_test_throw.yaml"
+    motion_path = "1024_punch_inthewild.yaml"
+    motion_path = "1103_tennis.yaml"
 
 
     if multiple_sources:
@@ -233,11 +236,11 @@ def main():
         target_motion_path = data['target_motion_path']
 
         target_tpose = 'data/cml_humanoid_tpose.npy'
+        target_tpose = 'data/cml_humanoid_tennis_tpose.npy'
 
         with open(retarget_data_path) as f:
             retarget_data = json.load(f)
 
-            print(retarget_data.keys())
             if changeSource:
                 retarget_data['source_motion'] = source_motion
                 retarget_data['target_tpose'] = target_tpose
@@ -321,7 +324,7 @@ def main():
         target_motion.to_file(retarget_data["target_motion_path"])
 
         # visualize retargeted motion
-        # plot_skeleton_motion_interactive(target_motion)
+        plot_skeleton_motion_interactive(target_motion)
     
     return
 

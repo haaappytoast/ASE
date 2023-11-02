@@ -1,0 +1,36 @@
+motions:
+# - source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@Blocking (1).npy
+#   target_motion_path: data/retargeted/1013_blocking/cml@Blocking1.npy
+#   fbx: ybot_vis@Blocking (1).fbx
+
+# - source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@Blocking (2).npy
+#   target_motion_path: data/retargeted/1013_blocking/cml@Blocking2.npy
+#   fbx: ybot_vis@Blocking (2).fbx
+
+# - source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@Blocking (3).npy
+#   target_motion_path: data/retargeted/1013_blocking/cml@Blocking3.npy
+#   fbx: ybot_vis@Blocking (3).fbx
+
+# - source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@Blocking (3).npy
+#   target_motion_path: data/retargeted/1013_blocking/cml@Blocking3.npy
+#   fbx: ybot_vis@Blocking (3).fbx
+
+- source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@outBlocking1.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking1.npy
+  fbx: ybot_vis@outBlocking1.fbx
+
+- source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@outBlocking2.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking2.npy
+  fbx: ybot_vis@outBlocking2.fbx
+
+- source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@outBlocking3.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking3.npy
+  fbx: ybot_vis@outBlocking3.fbx
+
+- source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@outBlocking4.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking3.npy
+  fbx: ybot_vis@outBlocking4.fbx
+
+- source_motion: data/unity/motion_retarget/1018_blocking/ybot_vis@outBlocking5.npy
+  target_motion_path: data/retargeted/1013_blocking/cml@Blocking5.npy
+  fbx: ybot_vis@outBlocking5.fbx

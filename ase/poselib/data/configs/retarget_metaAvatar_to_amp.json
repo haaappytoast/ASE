@@ -1,0 +1,28 @@
+{
+    "source_motion": "data/unity/MetaAvatar@motion1.npy",
+    "target_motion_path": "data/retargeted/cml@motion1.npy",
+    "source_tpose": "data/personal/t_pose/MetaAvatar_tpose.npy",
+    "target_tpose": "data/amp_humanoid_tpose.npy",
+    "joint_mapping": {
+         "Hips": "pelvis",
+         "Left_UpperLeg": "left_thigh",
+         "Left_LowerLeg": "left_shin",
+         "Left_Foot": "left_foot",
+         "Right_UpperLeg": "right_thigh",
+         "Right_LowerLeg": "right_shin",
+         "Right_Foot": "right_foot",
+         "Chest": "torso",
+         "Head": "head",
+         "Left_UpperArm": "left_upper_arm",
+         "Left_LowerArm": "left_lower_arm",
+         "Left_Hand": "left_hand",
+         "Right_UpperArm": "right_upper_arm",
+         "Right_LowerArm": "right_lower_arm",
+         "Right_Hand": "right_hand"
+    },
+    "rotation": [0, 0, 0.7071068, 0.7071068],
+    "scale": 0.01172,
+	"root_height_offset": -0.3,
+	"trim_frame_beg": 10,
+	"trim_frame_end": 299
+}

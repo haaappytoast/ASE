@@ -33,43 +33,14 @@ from poselib.core.rotation3d import *
 from poselib.skeleton.skeleton3d import SkeletonTree, SkeletonState
 from poselib.visualization.common import plot_skeleton_state
 
-"""
-This scripts imports a MJCF XML file and converts the skeleton into a SkeletonTree format.
-It then generates a zero rotation pose, and adjusts the pose into a T-Pose.
-"""
-
-# # import MJCF file
-# xml_path = "/home/vml/deepmm_ws/ASE/ase/data/assets/mjcf/cml_humanoid.xml"
-# skeleton = SkeletonTree.from_mjcf(xml_path)
-
-# # generate zero rotation pose
-# zero_pose = SkeletonState.zero_pose(skeleton)
-
-# # adjust pose into a T Pose
-# local_rotation = zero_pose.local_rotation
-# local_rotation[skeleton.index("pelvis")] = quat_mul(
-#     quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([1.0, 0.0, 0.0]), degree=True), 
-#     local_rotation[skeleton.index("left_upper_arm")]
-# )
-# local_rotation[skeleton.index("right_upper_arm")] = quat_mul(
-#     quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 1.0, 0.0]), degree=True), 
-#     local_rotation[skeleton.index("right_upper_arm")]
-# )
-
-# translation = zero_pose.root_translation
-# translation += torch.tensor([0, 0, 0.9])
-# translation = zero_pose.root_translation
-# print("zero_pose.global_translation: ", zero_pose.global_translation)
-
-# # save and visualize T-pose
-# zero_pose.to_file("data/cml_humanoid_tpose.npy")
-# plot_skeleton_state(zero_pose)
-
-
 # cml npy file
 path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
 import numpy as np
-npy_file = "personal/t_pose/MetaAvatar_tpose.npy"
+npy_file = "unity/t_pose/MetaAvatar_tpose.npy"
+# npy_file = "unity/t_pose/ybot_vis_tpose.npy"
+# npy_file = "cml_humanoid_tpose.npy"
+# npy_file = "cml_humanoid_tennis.npy"
+# npy_file = "unity/t_pose/red_tpose.npy"
 t_pose = np.load(path + npy_file, allow_pickle=True).item()
 skeletonState = SkeletonState.from_dict(t_pose) # skeletonState
 skeletonTree = SkeletonTree.from_dict(t_pose["skeleton_tree"]) # skeletonState
@@ -77,18 +48,19 @@ skeletonTree = SkeletonTree.from_dict(t_pose["skeleton_tree"]) # skeletonState
 # adjust pose into a T Pose
 
 local_rotation = skeletonState.local_rotation
-
-local_rotation[skeletonTree.index("Hips")] = quat_mul(
-    quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 0.0, 1.0]), degree=True), 
-    local_rotation[skeletonTree.index("Hips")]
-)
-local_rotation[skeletonTree.index("Hips")] = quat_mul(
-    quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 1.0, 0.0]), degree=True), 
-    local_rotation[skeletonTree.index("Hips")]
-)
-
-# print("---before---\n", skeletonTree.root_translation)
-
+print(skeletonTree)
+# local_rotation[skeletonTree.index("Hips")] = quat_mul(
+#     quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([0.0, 0.0, 1.0]), degree=True),
+#     local_rotation[skeletonTree.index("Hips")]
+# )
+# local_rotation[skeletonTree.index("left_upper_arm")] = quat_mul(
+#     quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([1.0, 0.0, 0.0]), degree=True),
+#     local_rotation[skeletonTree.index("left_upper_arm")]
+# )
+# local_rotation[skeletonTree.index("right_upper_arm")] = quat_mul(
+#     quat_from_angle_axis(angle=torch.tensor([90.0]), axis=torch.tensor([-1.0, 0.0, 0.0]), degree=True),
+#     local_rotation[skeletonTree.index("right_upper_arm")]
+# )
 # # translate root translation to new pose
 # new_root_translation = torch.tensor([0, skeletonState.root_translation[1], 0])
 # new_pose = SkeletonState.from_rotation_and_root_translation(
@@ -100,6 +72,6 @@ local_rotation[skeletonTree.index("Hips")] = quat_mul(
 # translation = skeletonState.root_translation
 # translation = torch.tensor([0, translation[1], 0])
 # print("\n---after---\n", new_pose.root_translation)
-skeletonState.to_file(path + "personal/t_pose/MetaAvatar_rotated.npy")
+#skeletonState.to_file(path + "cml_humanoid_tennis_tpose.npy")
 
 plot_skeleton_state(skeletonState)

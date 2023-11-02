@@ -1,0 +1,4 @@
+motions:
+- source_motion: data/unity/test/1023_pickfruits/meta@1023_picking_fruits_motion.npy
+  target_motion_path: data/retargeted/cml@1023_picking_fruits_motion.npy
+  # fbx: ybot_vis@Picking Up Object.fbx

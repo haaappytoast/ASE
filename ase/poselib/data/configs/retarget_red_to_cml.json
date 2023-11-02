@@ -1,0 +1,28 @@
+{
+    "source_motion": "data/unity/motion_retarget/1103_tennis/30fps/red@3-IDLE.npy",
+    "target_motion_path": "data/retargeted/1103_tennis/cml@3-IDLE.npy",
+    "source_tpose": "data/unity/t_pose/red_tpose.npy",
+    "target_tpose": "data/cml_humanoid_tennis_tpose.npy",
+    "joint_mapping": {
+         "Hip": "pelvis",
+         "LThigh": "left_thigh",
+         "LShin": "left_shin",
+         "LFoot": "left_foot",
+         "RThigh": "right_thigh",
+         "RShin": "right_shin",
+         "RFoot": "right_foot",
+         "Chest": "torso",
+         "Head": "head",
+         "LShoulder": "left_upper_arm",
+         "LForearm": "left_lower_arm",
+         "LHand": "left_hand",
+         "RShoulder": "right_upper_arm",
+         "RForearm": "right_lower_arm",
+         "RHand": "right_hand"
+    },
+    "rotation": [0.0, 0.0, 0.7071, 0.7071],
+    "scale": 0.01172,
+	"root_height_offset": 0.3,
+	"trim_frame_beg": -1,
+	"trim_frame_end": -1
+}

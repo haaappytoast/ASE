@@ -1,0 +1,12 @@
+motions:
+- source_motion: data/unity/test/1016/metaAvatar@1016pickfruits1.npy
+  target_motion_path: data/retargeted/test/1016/cml@1016pickfruits1.npy
+  # fbx: ybot_vis@1016pickfruits1.fbx
+
+- source_motion: data/unity/test/1016/metaAvatar@1016pickfruits2.npy
+  target_motion_path: data/retargeted/test/1016/cml@1016pickfruits2.npy
+  # fbx: ybot_vis@1016pickfruits2.fbx
+
+- source_motion: data/unity/test/1016/metaAvatar@1016pickfruits3.npy
+  target_motion_path: data/retargeted/test/1016/cml@1016pickfruits3.npy
+  # fbx: ybot_vis@1016pickfruits3.fbx

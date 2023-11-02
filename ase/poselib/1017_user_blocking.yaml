@@ -1,0 +1,9 @@
+motions:
+# - source_motion: data/unity/test/1017_blocking/user@inward (1).npy
+#   target_motion_path: data/retargeted/test/1017_userblocking/cml@inward1.npy
+
+# - source_motion: data/unity/test/1017_blocking/user@inward (2).npy
+#   target_motion_path: data/retargeted/test/1017_userblocking/cml@inward2.npy
+
+- source_motion: data/unity/test/1017_blocking/user@jointInfo0.npy
+  target_motion_path: data/retargeted/test/1017_userblocking/cml@jointInfo0.npy

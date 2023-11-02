@@ -1,0 +1,15 @@
+motions:
+- source_motion: data/unity/motion_retarget/ybot_vis@Wheelbarrow Walk Turn.npy
+  target_motion_path: data/retargeted/cml@WheelbarrowWalkTurn.npy
+
+- source_motion: data/unity/motion_retarget/ybot_vis@Pick Fruit_1.npy
+  target_motion_path: data/retargeted/cml@PickFruit_1.npy
+
+- source_motion: data/unity/motion_retarget/ybot_vis@Pick Fruit_2.npy
+  target_motion_path: data/retargeted/cml@PickFruit_2.npy
+
+- source_motion: data/unity/motion_retarget/ybot_vis@Pick Fruit_1_mirrored.npy
+  target_motion_path: data/retargeted/cml@PickFruit_1_mirrored.npy
+
+- source_motion: data/unity/motion_retarget/ybot_vis@Pick Fruit_2_mirrored.npy
+  target_motion_path: data/retargeted/cml@PickFruit_2_mirrored.npy

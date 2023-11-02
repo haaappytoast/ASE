@@ -1,0 +1,27 @@
+motions:
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (1).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch1.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (2).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch2.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (3).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch3.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (4).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch4.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (5).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch5.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (6).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch6.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (7).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch7.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@jointInfo0 (8).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@punch8.npy
+
+- source_motion: data/unity/1024_punch_REAL/meta@TEST_jointInfo0 (9).npy
+  target_motion_path: data/retargeted/test/1024_punch_REAL/cml@TESTpunch9.npy
