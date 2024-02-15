@@ -1,0 +1,33 @@
+motions:
+# - source_motion: data/unity/1020_throw/ybot_vis@Frisbee Throw.npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Frisbee Throw.npy
+#   fbx: ybot_vis@Frisbee Throw.fbx
+# - source_motion: data/unity/1020_throw/ybot_vis@Frisbee Throw (1).npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Frisbee Throw (1).npy
+#   fbx: ybot_vis@Frisbee Throw (1).fbx
+# - source_motion: data/unity/1020_throw/ybot_vis@Frisbee Throw (2).npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Frisbee Throw (2).npy
+#   fbx: ybot_vis@Frisbee Throw (2).fbx
+# - source_motion: data/unity/1020_throw/ybot_vis@Frisbee Throw (3).npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Frisbee Throw (3).npy
+#   fbx: ybot_vis@Frisbee Throw (3).fbx
+
+# - source_motion: data/unity/1020_throw/ybot_vis@Throw Object.npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Throw Object.npy
+#   fbx: ybot_vis@Throw Object.fbx
+# - source_motion: data/unity/1020_throw/ybot_vis@Throw Object (1).npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Throw Object (1).npy
+#   fbx: ybot_vis@Throw Object (1).fbx
+# - source_motion: data/unity/1020_throw/ybot_vis@Throw Object (3).npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Throw Object (3).npy
+#   fbx: ybot_vis@Throw Object (3).fbx
+# - source_motion: data/unity/1020_throw/ybot_vis@Throw Object (4).npy
+#   target_motion_path: data/retargeted/1020_throw/cml@Throw Object (4).npy
+#   fbx: ybot_vis@Throw Object (4).fbx
+
+- source_motion: data/unity/1020_throw/ybot_vis@Throwing.npy
+  target_motion_path: data/retargeted/1020_throw/cml@Throwing.npy
+  fbx: ybot_vis@Throwing.fbx
+- source_motion: data/unity/1020_throw/ybot_vis@Throwing (1).npy
+  target_motion_path: data/retargeted/1020_throw/cml@Throwing (1).npy
+  fbx: ybot_vis@Throwing (1).fbx

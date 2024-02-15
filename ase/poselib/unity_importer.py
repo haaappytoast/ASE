@@ -110,7 +110,11 @@ def main():
     # txt_name = 'motion_retarget/1018_user/user@jointInfo1.txt'
     # txt_name = 'test/1023_pickfruits/1023_picking_fruits_motion.txt'
     # txt_name = 'test/1024_throw/meta@throwjointInfo0 (9).txt'
-    txt_name = '1024_punch_REAL/meta@jointInfo0 (9).txt'
+    # txt_name = '1127_tennis/tennis_1127_TEST0.txt'
+    # txt_name = '1127_tennis/user_TEST50s (3).txt'
+    # txt_name = '1122_punch/meta@user_punchTEST50s (1).txt'
+    # txt_name = '_user_motions/meta@1212punch2_50s.txt'
+    txt_name = '1017_blocking/meta@block50s.txt'
     motion = txt_to_motion(path, txt_name, save_np = False, np_name='CMLAvatar@TempMotion@Transmat')
 
     motion.to_file("data/unity/" + txt_name[:-4]+".npy")

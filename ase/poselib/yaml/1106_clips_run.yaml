@@ -1,0 +1,12 @@
+motions:
+- source_motion: data/unity/1106_locomotion/lafan1_run1_subject5_160_2105.npy
+  target_motion_path: data/retargeted/1106_locomotion/run/cml_tennis@run1_subject5_160_2105.npy
+
+- source_motion: data/unity/1106_locomotion/lafan1_run1_subject5_160_2105_mirror.npy
+  target_motion_path: data/retargeted/1106_locomotion/run/cml_tennis@run1_subject5_160_2105_mirror.npy
+
+- source_motion: data/unity/1106_locomotion/lafan1_run2_subject1_145_2445.npy
+  target_motion_path: data/retargeted/1106_locomotion/run/cml_tennis@run2_subject1_145_2445.npy
+
+- source_motion: data/unity/1106_locomotion/lafan1_run2_subject1_145_2445_mirror.npy
+  target_motion_path: data/retargeted/1106_locomotion/run/cml_tennis@run2_subject1_145_2445_mirror.npy

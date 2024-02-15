@@ -1,0 +1,17 @@
+motions:
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject1_100_1170.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject1_100_1170.npy
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject1_100_1170_mirror.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject1_100_1170_mirror.npy
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject1_2460_3680.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject1_2460_3680.npy
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject1_2460_3680_mirror.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject1_2460_3680_mirror.npy
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject5_5740_6830.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject5_5740_6830.npy
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject5_5740_6830_mirror.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject5_5740_6830_mirror.npy
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject5_80_1715.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject5_80_1715.npy
+- source_motion: data/unity/1106_locomotion/lafan1_walk1_subject5_80_1715_mirror.npy
+  target_motion_path: data/retargeted/1106_locomotion/walk/cml_tennis@walk1_subject5_80_1715_mirror.npy

@@ -1,0 +1,12 @@
+motions:
+# - source_motion: data/unity/_user_motions/1120_user_pickfruits/user@pickfruits_up.npy
+#   target_motion_path: data/retargeted/1120_userpick/cml@pickfruits_up.npy
+
+# - source_motion: data/unity/_user_motions/1120_user_pickfruits/user@pickfruits_middle.npy
+#   target_motion_path: data/retargeted/1120_userpick/cml@pickfruits_middle.npy
+
+# - source_motion: data/unity/_user_motions/1120_user_pickfruits/user@pickfruits_down.npy
+#   target_motion_path: data/retargeted/1120_userpick/cml@pickfruits_down.npy
+
+- source_motion: data/unity/meta@pick50s.npy
+  target_motion_path: data/retargeted/1120_userpick/cml@pick50s.npy

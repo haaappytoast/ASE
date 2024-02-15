@@ -1,0 +1,106 @@
+motions:
+##! outward block
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking.npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking.npy
+#   fbx: ybot_vis@Blocking.fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (1).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (1).npy
+#   fbx: ybot_vis@Blocking (1).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (1).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (1).npy
+#   fbx: ybot_vis@Blocking (1).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (2).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (2).npy
+#   fbx: ybot_vis@Blocking (2).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (3).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (3).npy
+#   fbx: ybot_vis@Blocking (3).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (4).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (4).npy
+#   fbx: ybot_vis@Blocking (4).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (5).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (5).npy
+#   fbx: ybot_vis@Blocking (5).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (6).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (6).npy
+#   fbx: ybot_vis@Blocking (6).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (7).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (7).npy
+#   fbx: ybot_vis@Blocking (7).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (8).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (8).npy
+#   fbx: ybot_vis@Blocking (8).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (9).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (9).npy
+#   fbx: ybot_vis@Blocking (9).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (10).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (10).npy
+#   fbx: ybot_vis@Blocking (10).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@Blocking (11).npy
+#   target_motion_path: data/retargeted/1114_block/cml@Blocking (11).npy
+#   fbx: ybot_vis@Blocking (11).fbx
+
+# ##! idle block
+# - source_motion: data/unity/1114_block/ybot_vis@idleblock (0).npy
+#   target_motion_path: data/retargeted/1114_block/cml@ybot_vis@idleblock (0).npy
+#   fbx: ybot_vis@idleblock (0).fbx
+# - source_motion: data/unity/1114_block/ybot_vis@idleblock (1).npy
+#   target_motion_path: data/retargeted/1114_block/cml@idleblock (1).npy
+#   fbx: ybot_vis@idleblock (1).fbx
+# - source_motion: data/unity/1114_block/ybot_vis@idleblock (2).npy
+#   target_motion_path: data/retargeted/1114_block/cml@idleblock (2).npy
+#   fbx: ybot_vis@idleblock (2).fbx
+# - source_motion: data/unity/1114_block/ybot_vis@idleblock (3).npy
+#   target_motion_path: data/retargeted/1114_block/cml@idleblock (3).npy
+#   fbx: ybot_vis@idleblock (3).fbx
+- source_motion: data/unity/1114_block/ybot_vis@idleblock (4).npy
+  target_motion_path: data/retargeted/1114_block/cml@idleblock (4).npy
+  fbx: ybot_vis@idleblock (4).fbx
+# ##! inward block
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (0).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (0).npy
+#   fbx: ybot_vis@inwardblock (0).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (1).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (1).npy
+#   fbx: ybot_vis@inwardblock (1).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (1).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (1).npy
+#   fbx: ybot_vis@inwardblock (1).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (2).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (2).npy
+#   fbx: ybot_vis@inwardblock (2).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (3).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (3).npy
+#   fbx: ybot_vis@inwardblock (3).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (4).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (4).npy
+#   fbx: ybot_vis@inwardblock (4).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (5).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (5).npy
+#   fbx: ybot_vis@inwardblock (5).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (6).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (6).npy
+#   fbx: ybot_vis@inwardblock (6).fbx
+
+# - source_motion: data/unity/1114_block/ybot_vis@inwardblock (7).npy
+#   target_motion_path: data/retargeted/1114_block/cml@inwardblock (7).npy
+#   fbx: ybot_vis@inwardblock (7).fbx

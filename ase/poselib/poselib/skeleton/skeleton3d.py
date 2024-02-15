@@ -1262,6 +1262,8 @@ class SkeletonMotion(SkeletonState):
                 -1, len(joint_parents), 3
             )[0]
             skeleton_tree = SkeletonTree(joint_names, joint_parents, local_translation)
+            # print("skeleton_tree.parent_indices: ", skeleton_tree.parent_indices)
+            # print("skeleton_tree.node_names: ", skeleton_tree.node_names)
         skeleton_state = SkeletonState.from_rotation_and_root_translation(
             skeleton_tree, r=local_rotation, t=root_translation, is_local=True
         )

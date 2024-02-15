@@ -1,0 +1,28 @@
+{
+    "source_motion": "data/unity/MetaAvatar@motion1.npy",
+    "target_motion_path": "data/retargeted/1103_tennis/cml@3-IDLE.npy",
+    "source_tpose": "data/unity/t_pose/MetaAvatar_tpose.npy",
+    "target_tpose": "data/cml_humanoid_tennis_tpose.npy",
+    "joint_mapping": {
+         "Hips": "pelvis",
+         "Left_UpperLeg": "left_thigh",
+         "Left_LowerLeg": "left_shin",
+         "Left_Foot": "left_foot",
+         "Right_UpperLeg": "right_thigh",
+         "Right_LowerLeg": "right_shin",
+         "Right_Foot": "right_foot",
+         "Chest": "torso",
+         "Head": "head",
+         "Left_UpperArm": "left_upper_arm",
+         "Left_LowerArm": "left_lower_arm",
+         "Left_Hand": "left_hand",
+         "Right_UpperArm": "right_upper_arm",
+         "Right_LowerArm": "right_lower_arm",
+         "Right_Hand": "right_hand"
+    },
+    "rotation": [0.5, 0.5, 0.5, 0.5],
+    "scale": 0.01,
+	"root_height_offset": 0,
+	"trim_frame_beg": -1,
+	"trim_frame_end": -1
+}

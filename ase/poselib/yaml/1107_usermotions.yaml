@@ -1,0 +1,11 @@
+motions:
+- source_motion: data/unity/1114_user/cml@jointInfo0.npy
+  target_motion_path: data/retargeted/1107_usermotions/cml@pickfruits0.npy
+- source_motion: data/unity/1114_user/cml@jointInfo1.npy
+  target_motion_path: data/retargeted/1114_user/cml@pickfruits1.npy
+- source_motion: data/unity/1114_user/cml@jointInfo2.npy
+  target_motion_path: data/retargeted/1114_user/cml@pickfruits2.npy
+- source_motion: data/unity/1114_user/cml@jointInfo3.npy
+  target_motion_path: data/retargeted/1114_user/cml@block0.npy
+- source_motion: data/unity/1114_user/cml@jointInfo4.npy
+  target_motion_path: data/retargeted/1114_user/cml@block1.npy

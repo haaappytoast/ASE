@@ -212,8 +212,8 @@ class HumanoidHeading(humanoid_test_task.HumanoidTestTask):
         root_rot = self._humanoid_root_states[..., 3:7]
 
         task_reward = compute_heading_reward(root_pos, self._prev_root_pos, root_rot,
-                                                 self._tar_dir, self._tar_speed,
-                                                 self._tar_facing_dir, self.dt, _print)
+                                                self._tar_dir, self._tar_speed,
+                                                self._tar_facing_dir, self.dt, _print)
         
         self.rew_buf[:] = imit_reward + 0.6 * task_reward
         

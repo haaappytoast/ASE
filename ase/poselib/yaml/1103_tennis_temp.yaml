@@ -1,0 +1,3 @@
+motions:
+- source_motion: data/unity/test/1017_blocking/user@jointInfo0.npy
+  target_motion_path: data/retargeted/test/1106_tennis/cml@jointInfo0.npy

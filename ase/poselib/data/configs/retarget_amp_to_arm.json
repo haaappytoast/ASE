@@ -1,0 +1,28 @@
+{
+    "source_motion": "data/amp_humanoid_walk.npy",
+    "target_motion_path": "data/arm_walk.npy",
+    "source_tpose": "data/amp_humanoid_tpose.npy",
+    "target_tpose": "data/personal/Armature_tpose.npy",
+    "joint_mapping": {
+         "pelvis": "Hips",
+         "left_thigh": "Left_UpperLeg",
+         "left_shin": "Left_LowerLeg",
+         "left_foot": "Left_Foot",
+         "right_thigh": "Right_UpperLeg",
+         "right_shin": "Right_LowerLeg",
+         "right_foot": "Right_Foot",
+         "torso": "Chest",
+         "head": "Head",
+         "left_upper_arm": "Left_UpperArm",
+         "left_lower_arm": "Left_LowerArm",
+         "left_hand": "Left_Hand",
+         "right_upper_arm": "Right_UpperArm",
+         "right_lower_arm": "Right_LowerArm",
+         "right_hand": "Right_Hand"
+    },
+    "rotation": [0.5, 0.5, 0.5, 0.5],
+    "scale": 0.01172,
+	"root_height_offset": 0.3,
+	"trim_frame_beg": -1,
+	"trim_frame_end": -1
+}

@@ -1,0 +1,17 @@
+    "joint_mapping": {
+         "pelvis": "Hips",
+         "left_thigh": "Left_UpperLeg",
+         "left_shin": "Left_LowerLeg",
+         "left_foot": "Left_Foot",
+         "right_thigh": "Right_UpperLeg",
+         "right_shin": "Right_LowerLeg",
+         "right_foot": "Right_Foot",
+         "torso": "Chest",
+         "head": "Head",
+         "left_upper_arm": "Left_UpperArm",
+         "left_lower_arm": "Left_LowerArm",
+         "left_hand": "Left_Hand",
+         "right_upper_arm": "Right_UpperArm",
+         "right_lower_arm": "Right_LowerArm",
+         "right_hand": "Right_Hand"
+    },

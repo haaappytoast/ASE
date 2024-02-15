@@ -1,0 +1,32 @@
+motions:
+- source_motion: data/unity/1017_blocking/meta@block50s.npy
+  target_motion_path: data/retargeted/1018_blocking/cml@block50s.npy
+
+# ##! idle block
+# - source_motion: data/unity/1114_user/meta@user_idleblock0.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_idleblock0.npy
+
+# - source_motion: data/unity/1114_user/meta@user_idleblock1.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_idleblock1.npy
+
+# #! inblock
+# - source_motion: data/unity/1114_user/meta@user_inblock2.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_inblock2.npy
+
+# - source_motion: data/unity/1114_user/meta@user_inblock2_reverse.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_inblock2_reverse.npy
+
+# #! outblock
+# - source_motion: data/unity/1114_user/meta@user_outblock3.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_outblock3.npy
+
+# - source_motion: data/unity/1114_user/meta@user_outblock3_reverse.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_outblock3_reverse.npy
+
+# ##! TEST Motions
+# - source_motion: data/unity/1114_user/meta@user_outblock_TEST.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_outblock_TEST.npy
+
+# - source_motion: data/unity/1114_user/meta@user_inoutblock_TEST2.npy
+#   target_motion_path: data/retargeted/1114_userblock/cml@user_inoutblock_TEST2.npy
+

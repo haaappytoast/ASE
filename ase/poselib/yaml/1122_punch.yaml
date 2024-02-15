@@ -1,0 +1,18 @@
+motions:
+# - source_motion: data/unity/1122_punch/meta@user_punch (1).npy
+#   target_motion_path: data/retargeted/1122_punch/cml@user_punch (1).npy
+
+# - source_motion: data/unity/1122_punch/meta@user_punch (2).npy
+#   target_motion_path: data/retargeted/1122_punch/cml@user_punch (2).npy
+
+# - source_motion: data/unity/1122_punch/meta@user_punch (3).npy
+#   target_motion_path: data/retargeted/1122_punch/cml@user_punch (3).npy
+
+# - source_motion: data/unity/1122_punch/meta@user_punchTEST50s (2).npy
+#   target_motion_path: data/retargeted/1122_punch/cml@user_punchTEST50s (1.npy
+
+- source_motion: data/unity/1122_punch/meta@1212punch1_50s.npy
+  target_motion_path: data/retargeted/1122_punch/cml@1212punch1_50s.npy
+
+- source_motion: data/unity/1122_punch/meta@1212punch2_50s.npy
+  target_motion_path: data/retargeted/1122_punch/cml@1212punch2_50s.npy

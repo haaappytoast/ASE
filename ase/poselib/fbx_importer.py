@@ -53,7 +53,7 @@ from poselib.visualization.common import plot_skeleton_state, plot_skeleton_moti
 
 
 #### 2. fbx import -> ybot_fbx #### (True / False)
-if True:
+if False:
     # fbx_file = "data/unity/ArmatureSkinningUpdateTpose.fbx"
 
     fbx_file = "data/unity/motion_retarget/"
@@ -81,19 +81,12 @@ if True:
 
 
 #### 3. npy plotting #### (True / False)
-if False:
+if True:
     # import npy file
     import numpy as np
     path = "/home/vml/deepmm_ws/ASE/ase/poselib/data/"
-    # npy_file = "cml@userMotion2.npy"
     # npy_file = 'retargeted/test/cml@1016pickfruits1.npy'
-    # npy_file = 'retargeted/1018_punch/cml@Punching Bag (5).npy'
-    # npy_file = 'retargeted/test/cml@1016pickfruits3.npy'
-    # npy_file = 'unity/test/1016/metaAvatar@1016pickfruits2.npy'
-    # npy_file = 'retargeted/test/1017_userblocking/cml@jointInfo0.npy'
-    # path = "/home/vml/deepmm_ws/isaac_ws/isaac_example/ASE/ase/data/motions/"
-    # npy_file = 'retargeted/1024_punch_MIX/CML@Combo Punch (3).npy'
-    npy_file = 'unity/motion_retarget/1103_tennis/doubled/red@10-Hit 3 Speed2.npy'
+    npy_file = 'unity/1122_punch/meta@user_punchTEST50s (1).npy'
     # npy_file = "amp_humanoid_walk.npy"
 
     motion_dict = np.load(path + npy_file, allow_pickle=True).item()
@@ -110,3 +103,6 @@ if False:
     # # visualize motion
     # # plot_skeleton_motion_interactive(motion)
     plot_skeleton_motion_interactive(npy_motion)
+
+# 0- 760
+# 759 - 1499

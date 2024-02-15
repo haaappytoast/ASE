@@ -1,0 +1,5 @@
+motions:
+- source_motion: data/unity/1109_meta_tennis/meta@jointInfo0.npy
+  target_motion_path: data/retargeted/1109_tennis/cml@tennis0_test.npy
+- source_motion: data/unity/1109_meta_tennis/meta@jointInfo1.npy
+  target_motion_path: data/retargeted/1109_tennis/cml@tennis1_test.npy

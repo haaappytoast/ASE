@@ -1,9 +1,0 @@
-motions:
-- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@Punching (1).npy
-  target_motion_path: data/retargeted/1013_blocking/cml@Punching (1).npy
-  fbx: ybot_vis@Punching (1).fbx
-
-
-- source_motion: data/unity/motion_retarget/1018_outblock/ybot_vis@Punching.npy
-  target_motion_path: data/retargeted/1013_blocking/cml@Punching.npy
-  fbx: ybot_vis@Punching.fbx

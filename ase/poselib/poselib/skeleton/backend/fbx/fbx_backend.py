@@ -130,13 +130,13 @@ def fbx_to_npy(file_name_in, root_joint_name, fps):
         for joint in joint_list:
             arr = np.array(_recursive_to_list(joint.EvaluateLocalTransform(fbx_time)))
             scales = np.array(_recursive_to_list(joint.EvaluateLocalScaling(fbx_time)))
-            if not np.allclose(scales[0:3], scales[0]):
-                raise ValueError(
-                    "Different X, Y and Z scaling. Unsure how this should be handled. "
-                    "To solve this, look at this link and try to upgrade the script "
-                    "http://help.autodesk.com/view/FBX/2017/ENU/?guid=__files_GUID_10CDD"
-                    "63C_79C1_4F2D_BB28_AD2BE65A02ED_htm"
-                )
+            # if not np.allclose(scales[0:3], scales[0]):
+            #     raise ValueError(
+            #         "Different X, Y and Z scaling. Unsure how this should be handled. "
+            #         "To solve this, look at this link and try to upgrade the script "
+            #         "http://help.autodesk.com/view/FBX/2017/ENU/?guid=__files_GUID_10CDD"
+            #         "63C_79C1_4F2D_BB28_AD2BE65A02ED_htm"
+            #     )
             # Adjust the array for scaling
             arr /= scales[0]
             arr[3, 3] = 1.0

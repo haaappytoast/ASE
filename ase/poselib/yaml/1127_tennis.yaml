@@ -1,0 +1,34 @@
+motions:
+# - source_motion: data/unity/1127_tennis/meta@user_tennis (1).npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@user_tennis (1).npy
+
+# - source_motion: data/unity/1127_tennis/meta@user_tennis (2).npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@user_tennis (2).npy
+
+# - source_motion: data/unity/1127_tennis/meta@user_tennis (3).npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@user_tennis (3).npy
+  
+# - source_motion: data/unity/1127_tennis/meta@user_tennis (4).npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@user_tennis (4).npy
+
+# - source_motion: data/unity/1127_tennis/tennis_1127_TEST0.npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@tennis_1127_TEST0.npy
+
+# - source_motion: data/unity/1127_tennis/jointInfo0.npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@tennis_1127_TEST0.npy
+
+# - source_motion: data/unity/1127_tennis/jointInfo1.npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@tennis_1127_TEST1.npy
+
+# - source_motion: data/unity/1127_tennis/jointInfo2.npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@tennis_1127_TEST2.npy
+
+
+# - source_motion: data/unity/1127_tennis/user_TEST50s (1).npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@user_tennis_1128_TEST0.npy
+
+# - source_motion: data/unity/1127_tennis/user_TEST50s (2npy
+#   target_motion_path: data/retargeted/1127_tennis/cml@user_tennis_1128_TEST2.npy
+
+- source_motion: data/unity/1127_tennis/user_TEST50s (3).npy
+  target_motion_path: data/retargeted/1127_tennis/cml@user_tennis_1128_TEST3.npy

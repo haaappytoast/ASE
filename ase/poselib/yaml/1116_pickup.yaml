@@ -1,0 +1,27 @@
+motions:
+- source_motion: data/unity/_user_motions/meta@1211_pick50s.npy
+  target_motion_path: data/retargeted/1116_pickup/cml@pick50s.npy
+
+# - source_motion: data/unity/1116_ybot_pick/ybot_vis@Picking Up Object.npy
+#   target_motion_path: data/retargeted/1116_pickup/cml@Picking Up Object.npy
+#   fbx: ybot_vis@Picking Up Object.fbx
+
+# - source_motion: data/unity/1116_ybot_pick/ybot_vis@Picking Up Object_mirrored.npy
+#   target_motion_path: data/retargeted/1116_pickup/cml@Picking Up Object_mirrored.npy
+#   fbx: ybot_vis@Picking Up Object_mirrored.fbx
+
+# - source_motion: data/unity/1116_ybot_pick/ybot_vis@Picking Up Object (1).npy
+#   target_motion_path: data/retargeted/1116_pickup/cml@Picking Up Object (1).npy
+#   fbx: ybot_vis@Picking Up Object (1).fbx
+
+# - source_motion: data/unity/1116_ybot_pick/ybot_vis@Picking Up Object (1)_mirrored.npy
+#   target_motion_path: data/retargeted/1116_pickup/cml@Picking Up Object (1)_mirrored.npy
+#   fbx: ybot_vis@Picking Up Object (1)_mirrored.fbx
+
+# - source_motion: data/unity/1116_ybot_pick/ybot_vis@Picking Up Object (2).npy
+#   target_motion_path: data/retargeted/1116_pickup/cml@Picking Up Object (2).npy
+#   fbx: ybot_vis@Picking Up Object (2).fbx
+
+# - source_motion: data/unity/1116_ybot_pick/ybot_vis@Picking Up Object (2)_mirrored.npy
+#   target_motion_path: data/retargeted/1116_pickup/cml@Picking Up Object (2)_mirrored.npy
+#   fbx: ybot_vis@Picking Up Object (2)_mirrored.fbx
